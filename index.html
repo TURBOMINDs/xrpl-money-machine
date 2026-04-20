@@ -127,8 +127,10 @@
 </div>
 
 <script>
-let trialActive = false;
-
+let trialActive = localStorage.getItem("trialActive") === "true";
+if (trialActive) {
+    document.getElementById("walletStatus").innerText = "Status: Trial Active (3 Days Remaining)";
+}
 document.querySelector(".btn").addEventListener("click", function() {
     const status = document.getElementById("walletStatus");
 
@@ -139,6 +141,7 @@ document.querySelector(".btn").addEventListener("click", function() {
 
     if (!trialActive) {
         trialActive = true;
+      localStorage.setItem("trialActive", "true");
         alert("🔥 3 Day Trial Activated!");
 
         status.innerText = "Status: Trial Active (3 Days Remaining)";
