@@ -144,7 +144,8 @@ document.querySelector(".btn").addEventListener("click", function() {
 
     if (!trialActive) {
         trialActive = true;
-      localStorage.setItem("trialActive", "true");
+      const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
+localStorage.setItem("trialEnd", trialEnd);
         alert("🔥 3 Day Trial Activated!");
 
         status.innerHTML = 'Status: Trial Active <span class="highlight">(3 Days Remaining)</span>';
@@ -157,11 +158,19 @@ document.querySelector(".btn").addEventListener("click", function() {
 document.getElementById("connectBtn").addEventListener("click", function() {
     const status = document.getElementById("walletStatus");
 
-    if (localStorage.getItem("trialActive") === "true") {
-        status.innerHTML = 'Status: Trial Active <span class="highlight">(3 Days Remaining)</span>';
-    } else {
-        status.innerText = "Status: Wallet Connected";
-    }
+const trialEnd = parseInt(localStorage.getItem("trialEnd"));
+
+if (trialEnd && Date.now() < trialEnd) {
+
+    const timeLeft = trialEnd - Date.now();
+    const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+
+   status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
+
+} else {
+    status.innerText = "Status: Wallet Connected";
+}
+
 
     alert("Xaman Wallet Connected!");
 });
