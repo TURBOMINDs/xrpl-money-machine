@@ -153,7 +153,13 @@ document.querySelector(".btn").addEventListener("click", function() {
   <script>
 document.getElementById("connectBtn").addEventListener("click", function() {
     const status = document.getElementById("walletStatus");
-    status.innerText = "Status: Wallet Connected";
+
+    if (localStorage.getItem("trialActive") === "true") {
+        status.innerText = "Status: Trial Active (3 Days Remaining)";
+    } else {
+        status.innerText = "Status: Wallet Connected";
+    }
+
     alert("Xaman Wallet Connected!");
 });
 </script>
