@@ -126,5 +126,26 @@
 
 </div>
 
+<script>
+let trialActive = false;
+
+document.querySelector(".btn").addEventListener("click", function() {
+    const status = document.getElementById("walletStatus");
+
+    if (status.innerText.includes("Not connected")) {
+        alert("Connect your Xaman Wallet first");
+        return;
+    }
+
+    if (!trialActive) {
+        trialActive = true;
+        alert("🔥 3 Day Trial Activated!");
+
+        status.innerText = "Status: Trial Active (3 Days Remaining)";
+    } else {
+        alert("Trial already active");
+    }
+});
+</script>
 </body>
 </html>
