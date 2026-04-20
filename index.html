@@ -77,11 +77,14 @@
   transform: scale(1.05);
   box-shadow: 0 0 22px rgba(0, 200, 255, 0.9);
 }
-
-.trial {
-  color: #00ffcc;
+.powered {
+  color: gold;
   font-weight: bold;
-  text-shadow: 0 0 10px #00ffcc;
+}
+
+.highlight {
+  color: yellow;
+  font-weight: bold;
 }
   </style>
 </head>
@@ -90,7 +93,7 @@
 
 <h1>🚀 XRPL Universal Money Machine</h1>
 <p>System is LIVE</p>
-<p>Powered by XEMA</p>
+<p class="powered">Powered by XEMA</p>
 
 <!-- 👇 PASTE IT HERE -->
 <div class="wallet-box">
@@ -144,7 +147,7 @@ document.querySelector(".btn").addEventListener("click", function() {
       localStorage.setItem("trialActive", "true");
         alert("🔥 3 Day Trial Activated!");
 
-        status.innerText = "Status: Trial Active (3 Days Remaining)";
+        status.innerHTML = 'Status: Trial Active <span class="highlight">(3 Days Remaining)</span>';
     } else {
         alert("Trial already active");
     }
@@ -155,7 +158,7 @@ document.getElementById("connectBtn").addEventListener("click", function() {
     const status = document.getElementById("walletStatus");
 
     if (localStorage.getItem("trialActive") === "true") {
-        status.innerText = "Status: Trial Active (3 Days Remaining)";
+        status.innerHTML = 'Status: Trial Active <span class="highlight">(3 Days Remaining)</span>';
     } else {
         status.innerText = "Status: Wallet Connected";
     }
