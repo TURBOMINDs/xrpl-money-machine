@@ -147,5 +147,12 @@ document.querySelector(".btn").addEventListener("click", function() {
     }
 });
 </script>
+  <script>
+document.getElementById("connectBtn").addEventListener("click", function() {
+    const status = document.getElementById("walletStatus");
+    status.innerText = "Status: Wallet Connected";
+    alert("Xaman Wallet Connected!");
+});
+</script>
 </body>
 </html>
