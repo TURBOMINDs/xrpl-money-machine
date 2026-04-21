@@ -191,29 +191,29 @@
  
  document.querySelectorAll(".btn").forEach(btn => {
    btn.addEventListener("click", function () {
-     const status = document.getElementById("walletStatus");
- 
-     if (this.innerText !== "Start Trial") return;
- 
-     if (status.innerText.includes("Not connected")) {
-       alert("Connect your Xaman Wallet first");
-       return;
-     }
- 
-     if (!useSwap()) {
-       return;
-     }
- 
+    if (this.innerText !== "Start Trial") return;
+
+    const status = document.getElementById("walletStatus");
+
+    if (!status.innerText.includes("Connected")) {
+        alert("Connect your Xaman Wallet first");
+        return;
+    }
+
+    if (!useSwap()) {
+        return;
+    }
      const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
-     localStorage.setItem("trialEnd", trialEnd);
- 
-     alert("🔥 3 Day Trial Activated!");
- 
-     const timeLeft = trialEnd - Date.now();
-     const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
- 
-     status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
-   });
+     
+    localStorage.setItem("trialEnd", trialEnd);
+
+    alert("🔥 3 Day Trial Activated!");
+
+    const timeLeft = trialEnd - Date.now();
+    const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+
+    status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
+});
  });
   </script>
 
