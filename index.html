@@ -130,28 +130,27 @@
 </div>
 
 <script>
-let trialActive = localStorage.getItem("trialActive") === "true";
-if (trialActive) {
-    document.getElementById("walletStatus").innerText = "Status: Trial Active (3 Days Remaining)";
-}
-document.querySelector(".btn").addEventListener("click", function() {
+
+document.querySelectorAll(".btn").forEach(btn => {
+  btn.addEventListener("click", function() {
     const status = document.getElementById("walletStatus");
 
     if (status.innerText.includes("Not connected")) {
         alert("Connect your Xaman Wallet first");
         return;
-    }
+  }   
 
-    if (!trialActive) {
-        trialActive = true;
-      const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
+const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
 localStorage.setItem("trialEnd", trialEnd);
-        alert("🔥 3 Day Trial Activated!");
 
-        status.innerHTML = 'Status: Trial Active <span class="highlight">(3 Days Remaining)</span>';
-    } else {
-        alert("Trial already active");
-    }
+alert("🔥 3 Day Trial Activated!");
+
+const timeLeft = trialEnd - Date.now();
+const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+
+status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
+    
+});
 });
 </script>
   <script>
@@ -168,8 +167,7 @@ if (trialEnd && Date.now() < trialEnd) {
    status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
 
 } else {
-    status.innerText = "Status: Wallet Connected";
-}
+    
 
 status.innerText = "Status: Wallet Connected";
     alert("Xaman Wallet Connected!");
