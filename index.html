@@ -2,12 +2,13 @@
 <html>
 <head>
   <title>XRPL Universal Money Machine</title>
+
   <style>
     body {
       margin: 0;
-      background: radial-gradient(circle at top, #0a0a0a, #000000);
+      background: radial-gradient(circle at top, #0a0a0a, #000);
       color: white;
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       text-align: center;
     }
 
@@ -16,10 +17,6 @@
       font-size: 42px;
       margin-top: 40px;
       text-shadow: 0 0 15px orange;
-    }
-
-    p {
-      color: #ccc;
     }
 
     .container {
@@ -36,7 +33,7 @@
       margin: 15px;
       width: 250px;
       background: #111;
-      box-shadow: 0 0 20px rgba(255, 140, 0, 0.4);
+      box-shadow: 0 0 20px rgba(255,140,0,0.4);
       transition: 0.3s;
     }
 
@@ -58,7 +55,6 @@
 
     .wallet-box {
       margin-top: 20px;
-      margin-bottom: 20px;
     }
 
     .wallet-btn {
@@ -69,18 +65,6 @@
       color: white;
       font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 0 15px rgba(0, 200, 255, 0.5);
-      transition: 0.3s;
-    }
-
-    .wallet-btn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 22px rgba(0, 200, 255, 0.9);
-    }
-
-    .powered {
-      color: gold;
-      font-weight: bold;
     }
 
     .highlight {
@@ -89,137 +73,171 @@
     }
   </style>
 </head>
+
 <body>
 
-  <h1>🚀 XRPL Universal Money Machine</h1>
-  <p>System is LIVE</p>
-  <p class="powered">Powered by XEMA</p>
+<h1>🚀 XRPL Universal Money Machine</h1>
+<p>System is LIVE</p>
+<p style="color: gold;">Powered by XEMA</p>
 
-  <div class="wallet-box">
-    <button id="connectBtn" class="wallet-btn">Connect Xaman Wallet</button>
-    <p id="walletStatus">Status: Not connected</p>
+<div class="wallet-box">
+  <button id="connectBtn" class="wallet-btn">Connect Xaman Wallet</button>
+  <p id="walletStatus">Status: Not connected</p>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Basic Access</h2>
+    <p>5 AMMs</p>
+    <p>2 Swaps / 24h</p>
+    <p id="trialText">3 Day Free Trial</p>
+    <p>$7 / month</p>
+    <button id="trialBtn" class="btn">Start Trial</button>
   </div>
 
-  <div class="container">
-    <div class="card">
-      <h2>Basic Access</h2>
-      <p>5 AMMs</p>
-      <p>2 Swaps / 24h</p>
-      <p id="trialText" class="trial">3 Day Free Trial</p>
-      <p>$7 / month</p>
-      <button class="btn">Start Trial</button>
-    </div>
-
-    <div class="card">
-      <h2>Plus Access</h2>
-      <p>15 AMMs</p>
-      <p>5 Swaps / 24h</p>
-      <p>$15 / month</p>
-      <button class="btn">Upgrade</button>
-    </div>
-
-    <div class="card">
-      <h2>Ultimate Pro</h2>
-      <p>50 AMMs</p>
-      <p>15 Swaps / 24h</p>
-      <p>$25 / month</p>
-      <button class="btn">Go Pro</button>
-    </div>
+  <div class="card">
+    <h2>Plus Access</h2>
+    <p>15 AMMs</p>
+    <p>5 Swaps / 24h</p>
+    <p>$15 / month</p>
+    <button id="plusBtn" class="btn">Upgrade</button>
   </div>
 
-  <script>
-    // Set default tier
-    if (!localStorage.getItem("tier")) {
-      localStorage.setItem("tier", "basic");
-    }
+  <div class="card">
+    <h2>Ultimate Pro</h2>
+    <p>50 AMMs</p>
+    <p>15 Swaps / 24h</p>
+    <p>$25 / month</p>
+    <button id="proBtn" class="btn">Go Pro</button>
+  </div>
 
-    // Swap limits per tier
-    const SWAP_LIMITS = {
-      basic: 2,
-      plus: 5,
-      pro: 15
-    };
+</div>
 
-    function getTier() {
-      return localStorage.getItem("tier");
-    }
+<script>
 
-    function getSwapCount() {
-      return parseInt(localStorage.getItem("swapCount") || "0");
-    }
+// ===== STATE =====
+let walletConnected = localStorage.getItem("walletConnected") === "true";
+let tier = localStorage.getItem("tier") || "none";
+let trialEnd = parseInt(localStorage.getItem("trialEnd") || "0");
 
-    function getStartTime() {
-      return parseInt(localStorage.getItem("swapStart") || "0");
-    }
+// ===== ELEMENTS =====
+const statusEl = document.getElementById("walletStatus");
+const connectBtn = document.getElementById("connectBtn");
+const trialBtn = document.getElementById("trialBtn");
+const plusBtn = document.getElementById("plusBtn");
+const proBtn = document.getElementById("proBtn");
+const trialText = document.getElementById("trialText");
 
-    function resetIfNeeded() {
-      const now = Date.now();
-      const start = getStartTime();
+// ===== UPDATE UI =====
+function updateUI() {
+  const now = Date.now();
 
-      if (!start || now - start > 86400000) {
-        localStorage.setItem("swapCount", "0");
-        localStorage.setItem("swapStart", now.toString());
-      }
-    }
+  if (trialEnd && now < trialEnd) {
+    const days = Math.ceil((trialEnd - now) / (1000*60*60*24));
+    statusEl.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
+    trialText.classList.add("highlight");
+    return;
+  }
 
-    function useSwap() {
-      resetIfNeeded();
+  if (tier === "plus") {
+    statusEl.innerHTML = `Status: <span class="highlight">Plus Active</span>`;
+    return;
+  }
 
-      const tier = getTier();
-      const limit = SWAP_LIMITS[tier];
-      let count = getSwapCount();
+  if (tier === "pro") {
+    statusEl.innerHTML = `Status: <span class="highlight">Ultimate Pro Active</span>`;
+    return;
+  }
 
-      if (count >= limit) {
-        alert(`Swap limit reached (${limit}/24h)`);
-        return false;
-      }
+  if (walletConnected) {
+    statusEl.innerHTML = "Status: Connected";
+    trialText.classList.add("highlight");
+  } else {
+    statusEl.innerHTML = "Status: Not connected";
+  }
+}
 
-      count++;
-      localStorage.setItem("swapCount", count.toString());
+updateUI();
 
-      alert(`Swap used: ${count}/${limit}`);
-      return true;
-    }
+// ===== CONNECT WALLET =====
+connectBtn.addEventListener("click", () => {
+  walletConnected = true;
+  localStorage.setItem("walletConnected", "true");
 
-    // Start Trial button logic
-    document.querySelectorAll(".btn").forEach(btn => {
-      btn.addEventListener("click", function () {
-        if (this.innerText.trim() !== "Start Trial") return;
+  connectBtn.innerText = "Wallet Connected ✅";
 
-        const status = document.getElementById("walletStatus");
+  updateUI();
+  alert("Xaman Wallet connected!");
+});
 
-        if (!status.innerText.includes("Connected")) {
-          alert("Connect your Xaman Wallet first");
-          return;
-        }
+// ===== START TRIAL =====
+trialBtn.addEventListener("click", () => {
 
-        if (!useSwap()) {
-          return;
-        }
+  if (!walletConnected) {
+    alert("Connect your Xaman Wallet first");
+    return;
+  }
 
-        const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
-        localStorage.setItem("trialEnd", trialEnd.toString());
+  const now = Date.now();
 
-        alert("🔥 3 Day Trial Activated!");
+  if (tier === "plus" || tier === "pro") {
+    alert("You already have a paid plan.");
+    return;
+  }
 
-        const timeLeft = trialEnd - Date.now();
-        const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+  if (trialEnd && now < trialEnd) {
+    alert("Trial already active.");
+    return;
+  }
 
-        status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
-      });
-    });
+  trialEnd = now + (3 * 24 * 60 * 60 * 1000);
+  tier = "trial";
 
-    // Connect Wallet button logic
-    document.getElementById("connectBtn").addEventListener("click", function () {
-      const status = document.getElementById("walletStatus");
-      const trialText = document.getElementById("trialText");
+  localStorage.setItem("trialEnd", trialEnd);
+  localStorage.setItem("tier", "trial");
 
-      status.innerHTML = "Status: Connected";
-      trialText.classList.add("highlight");
+  updateUI();
+  alert("🔥 3 Day Trial Activated!");
+});
 
-      alert("Xaman Wallet connected!");
-    });
-  </script>
+// ===== PLUS =====
+plusBtn.addEventListener("click", () => {
+
+  if (!walletConnected) {
+    alert("Connect your Xaman Wallet first");
+    return;
+  }
+
+  tier = "plus";
+  trialEnd = 0;
+
+  localStorage.setItem("tier", "plus");
+  localStorage.removeItem("trialEnd");
+
+  updateUI();
+  alert("✅ Upgraded to Plus!");
+});
+
+// ===== PRO =====
+proBtn.addEventListener("click", () => {
+
+  if (!walletConnected) {
+    alert("Connect your Xaman Wallet first");
+    return;
+  }
+
+  tier = "pro";
+  trialEnd = 0;
+
+  localStorage.setItem("tier", "pro");
+  localStorage.removeItem("trialEnd");
+
+  updateUI();
+  alert("🚀 Ultimate Pro Activated!");
+});
+
+</script>
 
 </body>
 </html>
