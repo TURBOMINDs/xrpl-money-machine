@@ -129,112 +129,102 @@
 </div>
 </div>
 
-<script>
-// ===== SWAP SYSTEM =====
+ <script>
+ // ===== SWAP SYSTEM =====
 
-// Set default tier (for testing)
-if (!localStorage.getItem("tier")) {
-  localStorage.setItem("tier", "basic"); // change to plus / pro to test
-}
+ // Set default tier (for testing)
+ if (!localStorage.getItem("tier")) {
+   localStorage.setItem("tier", "basic");
+ }
+  
+ // Swap limits per tier
+ const SWAP_LIMITS = {
+   basic: 2,
+   plus: 5,
+   pro: 15
+ };
+ 
+ // Get current tier8 function getTier() {
+   return localStorage.getItem("tier");
+ }
+ 
+ // Get swap count
+ function getSwapCount() {
+   return parseInt(localStorage.getItem("swapCount") || "0");
+ }
+ 
+ // Get start time
+ function getStartTime() {
+   return parseInt(localStorage.getItem("swapStart") || "0");
+ }
+ 
+ // Reset swaps if 24h passed
+ function resetIfNeeded() {
+   const now = Date.now();
+   const start = getStartTime();
+ 
+   if (!start || now - start > 86400000) {
+     localStorage.setItem("swapCount", "0");
+     localStorage.setItem("swapStart", now.toString());
+   }
+ }
+ 
+ // Use a swap
+ function useSwap() {
+   resetIfNeeded();
+ 
+   const tier = getTier();
+   const limit = SWAP_LIMITS[tier];
+   let count = getSwapCount();
+ 
+   if (count >= limit) {
+     alert(`Swap limit reached (${limit}/24h)`);
+     return false;
+   }
+ 
+   count++;
+   localStorage.setItem("swapCount", count.toString());
+ 
+   alert(`Swap used: ${count}/${limit}`);
+   return true;
+ }
+ 
+ document.querySelectorAll(".btn").forEach(btn => {
+   btn.addEventListener("click", function () {
+     const status = document.getElementById("walletStatus");
+ 
+     if (this.innerText !== "Start Trial") return;
+ 
+     if (status.innerText.includes("Not connected")) {
+       alert("Connect your Xaman Wallet first");
+       return;
+     }
+ 
+     if (!useSwap()) {
+       return;
+     }
+ 
+     const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
+     localStorage.setItem("trialEnd", trialEnd);
+ 
+     alert("🔥 3 Day Trial Activated!");
+ 
+     const timeLeft = trialEnd - Date.now();
+     const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+ 
+     status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
+   });
+ });
+  </script>
 
-// Swap limits per tier
-const SWAP_LIMITS = {
-  basic: 2,
-  plus: 5,
-  pro: 15
-};
+ <script>
+ document.getElementById("connectBtn").addEventListener("click", function () {
+   const status = document.getElementById("walletStatus");
+   status.innerHTML = "Status: Connected";
+   alert("Xaman Wallet connected!");
+ });
+ </script>
 
-// Get current tier
-function getTier() {
-  return localStorage.getItem("tier");
-}
-// Get swap count
-function getSwapCount() {
-  return parseInt(localStorage.getItem("swapCount") || "0");
-}
-
-// Get start time
-function getStartTime() {
-  return parseInt(localStorage.getItem("swapStart") || "0");
-}
-
-// Reset swaps if 24h passed
-function resetIfNeeded() {
-  const now = Date.now();
-  const start = getStartTime();
-
-  if (!start || now - start > 86400000) {
-    localStorage.setItem("swapCount", "0");
-    localStorage.setItem("swapStart", now.toString());
-  }
-}
-
-// Use a swap
-function useSwap() {
-  resetIfNeeded();
-
-  const tier = getTier();
-  const limit = SWAP_LIMITS[tier];
-  let count = getSwapCount();
-
-  if (count >= limit) {
-    alert(`Swap limit reached (${limit}/24h)`);
-    return false;
-  }
-
-  count++;
-  localStorage.setItem("swapCount", count.toString());
-
-  alert(`Swap used: ${count}/${limit}`);
-  return true;
-}
-
-document.querySelectorAll(".btn").forEach(btn => {
-  btn.addEventListener("click", function() {
-    if (this.innerText !== "Start Trial") return;
-    const status = document.getElementById("walletStatus");
-
- if (status.innerText.includes("Not connected")) {
-  alert("Connect your Xaman Wallet first");
-  return;
-}
-
-if (!useSwap()) {
-  return;
-}
-
-const trialEnd = Date.now() + (3 * 24 * 60 * 60 * 1000);
-localStorage.setItem("trialEnd", trialEnd);
-
-alert("🔥 3 Day Trial Activated!");
-
-const timeLeft = trialEnd - Date.now();
-const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
-status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
-    
-});
-});
-</script>
-  <script>
-document.getElementById("connectBtn").addEventListener("click", function() {
-    const status = document.getElementById("walletStatus");
-
-const trialEnd = parseInt(localStorage.getItem("trialEnd"));
-
-if (trialEnd && Date.now() < trialEnd) {
-
-    const timeLeft = trialEnd - Date.now();
-    const days = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
-
-   status.innerHTML = `Status: Trial Active <span class="highlight">(${days} Days Remaining)</span>`;
-
-} else {
-    
-
-status.innerText = "Status: Wallet Connected";
-    alert("Xaman Wallet Connected!");
-});
-</script>
-</body>
-</html>
+ </body>
+ </html>
+   
