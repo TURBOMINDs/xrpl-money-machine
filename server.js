@@ -1,359 +1,421 @@
 
 
-const path = require("path");
-const crypto = require("crypto");
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
-const { Xumm } = require("xumm");
+const path = require("path");
+const { XummSdk } = require("xumm");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const XAMAN_API_KEY = process.env.XAMAN_API_KEY;
-const XAMAN_API_SECRET = process.env.XAMAN_API_SECRET;
-const RECEIVING_XRP_ADDRESS = process.env.RECEIVING_XRP_ADDRESS;
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
+const XUMM_API_KEY = process.env.XUMM_API_KEY;
+const XUMM_API_SECRET = process.env.XUMM_API_SECRET;
 
-if (!XAMAN_API_KEY || !XAMAN_API_SECRET) {
-  throw new Error("Missing XAMAN_API_KEY or XAMAN_API_SECRET in environment.");
+if (!XUMM_API_KEY || !XUMM_API_SECRET) {
+  console.error("Missing XUMM_API_KEY or XUMM_API_SECRET in environment variables.");
+  process.exit(1);
 }
 
-if (!RECEIVING_XRP_ADDRESS) {
-  throw new Error("Missing RECEIVING_XRP_ADDRESS in environment.");
-}
-
-const xumm = new Xumm(XAMAN_API_KEY, XAMAN_API_SECRET);
+const xumm = new XummSdk(XUMM_API_KEY, XUMM_API_SECRET);
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-const payloadStore = new Map();
+/**
+ * Temporary in-memory subscription store.
+ * Good enough for debugging wallet connect + flow.
+ * Later you can move this into a database.
+ */
+const subscriptions = new Map();
 
 /**
- * Prices below are XRP placeholder values in DROPS:
- * 7 XRP  = 7000000
- * 15 XRP = 15000000
- * 25 XRP = 25000000
- *
- * Change these to your real production XRPL billing values.
+ * Helpers
  */
-const PLANS = {
-  basic: {
-    label: "Basic",
-    amountDrops: "7000000",
-    durationMs: 30 * 24 * 60 * 60 * 1000
-  },
-  plus: {
-    label: "Plus",
-    amountDrops: "15000000",
-    durationMs: 30 * 24 * 60 * 60 * 1000
-  },
-  pro: {
-    label: "Pro",
-    amountDrops: "25000000",
-    durationMs: 30 * 24 * 60 * 60 * 1000
-  }
-};
-
-function isoNow() {
-  return new Date().toISOString();
+function safeCapitalize(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function buildMemo(value) {
+function getSubscription(account) {
+  if (!account) return null;
+  return subscriptions.get(account) || null;
+}
+
+function setTrial(account) {
+  const now = Date.now();
+  const expiresAt = new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+  const sub = {
+    account,
+    plan: "basic",
+    renewalPreference: "manual",
+    isTrial: true,
+    expiresAt
+  };
+
+  subscriptions.set(account, sub);
+  return sub;
+}
+
+function setPaidPlan(account, plan, renewalPreference = "manual") {
+  const now = Date.now();
+  const expiresAt = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const sub = {
+    account,
+    plan,
+    renewalPreference,
+    isTrial: false,
+    expiresAt
+  };
+
+  subscriptions.set(account, sub);
+  return sub;
+}
+
+function payloadResponseToStatus(payload) {
+  const resolved = !!payload?.meta?.resolved;
+  const signed = !!payload?.meta?.signed;
+  const opened = !!payload?.meta?.opened;
+  const account =
+    payload?.response?.account ||
+    payload?.response?.txid_account ||
+    payload?.application?.issued_user_token ||
+    "";
+
+  let stage = "created";
+  if (resolved && signed) stage = "signed";
+  else if (resolved && !signed) stage = "rejected";
+  else if (opened) stage = "opened";
+
   return {
-    Memo: {
-      MemoData: Buffer.from(String(value), "utf8").toString("hex").toUpperCase()
-    }
+    resolved,
+    signed,
+    opened,
+    account,
+    stage
   };
 }
 
-async function createTrackedPayload({ payloadBody, kind, meta = {} }) {
-  const localId = crypto.randomUUID();
-
-  const tracked = {
-    uuid: null,
-    localId,
-    kind,
-    meta,
-    createdAt: isoNow(),
-    stage: "created",
-    opened: false,
-    resolved: false,
-    signed: false,
-    rejected: false,
-    account: null,
-    txid: null,
-    next: null,
-    qr: null,
-    expiresAt: null,
-    error: null
-  };
-
-  const subscription = await xumm.payload.createAndSubscribe(payloadBody, eventMessage => {
-    if (!tracked.uuid) return;
-
-    if (eventMessage?.data?.opened) {
-      tracked.stage = "opened";
-      tracked.opened = true;
-      payloadStore.set(tracked.uuid, tracked);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(eventMessage?.data || {}, "signed")) {
-      tracked.stage = "resolved";
-      tracked.resolved = true;
-      tracked.signed = !!eventMessage.data.signed;
-      tracked.rejected = !eventMessage.data.signed;
-      payloadStore.set(tracked.uuid, tracked);
-      return eventMessage;
-    }
+/**
+ * Health check
+ */
+app.get("/api/health", (_req, res) => {
+  res.json({
+    ok: true,
+    message: "XRPL Money Machine server is running."
   });
-
-  const { created, resolved } = subscription;
-
-  tracked.uuid = created.uuid;
-  tracked.next = created.next?.always || null;
-  tracked.qr = created.refs?.qr_png || null;
-
-  payloadStore.set(tracked.uuid, tracked);
-
-  resolved
-    .then(async () => {
-      try {
-        const full = await xumm.payload.get(created.uuid);
-
-        tracked.resolved = true;
-        tracked.stage = "resolved";
-        tracked.signed = !!full?.response?.signed;
-        tracked.rejected = full?.response?.signed === false;
-        tracked.account = full?.response?.account || null;
-        tracked.txid = full?.response?.txid || null;
-
-        if (kind === "plan" || kind === "renew") {
-          const { plan, renewalPreference, connectedAccount } = meta;
-          const now = Date.now();
-          const expiresAt = now + PLANS[plan].durationMs;
-
-          tracked.plan = plan;
-          tracked.renewalPreference = renewalPreference;
-          tracked.startedAt = now;
-          tracked.expiresAt = expiresAt;
-
-          if (connectedAccount && tracked.account && connectedAccount !== tracked.account) {
-            tracked.error = "Signed account does not match connected wallet.";
-            tracked.signed = false;
-          }
-        }
-
-        payloadStore.set(tracked.uuid, tracked);
-      } catch (error) {
-        tracked.error = error.message || "Failed to fetch resolved payload.";
-        payloadStore.set(tracked.uuid, tracked);
-      }
-    })
-    .catch(error => {
-      tracked.error = error.message || "Payload resolution failed.";
-      payloadStore.set(tracked.uuid, tracked);
-    });
-
-  return tracked;
-}
-
-app.get("/api/health", async (_req, res) => {
-  try {
-    const pong = await xumm.ping();
-    res.json({ ok: true, pong });
-  } catch (error) {
-    res.status(500).json({ ok: false, error: error.message });
-  }
 });
 
+/**
+ * Create SignIn payload for wallet connect
+ */
 app.post("/api/connect/create", async (_req, res) => {
   try {
-    const payloadBody = {
+    const created = await xumm.payload.create({
       txjson: {
         TransactionType: "SignIn"
       },
-      options: {
-        return_url: {
-          app: `${PUBLIC_BASE_URL}/?flow=connect&id={id}`,
-          web: `${PUBLIC_BASE_URL}/?flow=connect&id={id}`
-        }
-      },
       custom_meta: {
-        identifier: `connect-${Date.now()}`,
-        instruction: "Sign in to connect your Xaman wallet."
+        identifier: "xrpl-money-machine-connect",
+        instruction: "Sign in to XRPL Universal Money Machine"
       }
-    };
-
-    const tracked = await createTrackedPayload({
-      payloadBody,
-      kind: "connect"
     });
 
-    res.json({
+    return res.json({
       ok: true,
-      uuid: tracked.uuid,
-      next: tracked.next,
-      qr: tracked.qr
+      uuid: created?.uuid,
+      next: created?.next?.always || "",
+      qr: created?.refs?.qr_png || ""
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Connect payload create error:", error);
+    return res.status(500).json({
       ok: false,
-      error: error.message || "Failed to create connect payload."
+      error: error?.message || "Failed to create connect payload."
     });
   }
 });
 
+/**
+ * Create SignIn payload for starting trial
+ * We reuse SignIn so the user explicitly approves with the same wallet.
+ */
+app.post("/api/trial/create", async (req, res) => {
+  try {
+    const { connectedAccount } = req.body || {};
+
+    if (!connectedAccount) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing connectedAccount."
+      });
+    }
+
+    const created = await xumm.payload.create({
+      txjson: {
+        TransactionType: "SignIn"
+      },
+      custom_meta: {
+        identifier: "xrpl-money-machine-basic-trial",
+        instruction: "Approve Basic 3 Day Free Trial",
+        blob: {
+          connectedAccount,
+          action: "trial",
+          plan: "basic"
+        }
+      }
+    });
+
+    return res.json({
+      ok: true,
+      uuid: created?.uuid,
+      next: created?.next?.always || "",
+      qr: created?.refs?.qr_png || ""
+    });
+  } catch (error) {
+    console.error("Trial payload create error:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Failed to create trial payload."
+    });
+  }
+});
+
+/**
+ * Create SignIn payload for paid plan activation
+ * This is still a connect/approval flow for now.
+ * You can later replace this with real payment txjson.
+ */
 app.post("/api/plan/create", async (req, res) => {
   try {
     const { plan, renewalPreference, connectedAccount } = req.body || {};
 
-    if (!plan || !PLANS[plan]) {
-      return res.status(400).json({ ok: false, error: "Invalid plan." });
-    }
-
     if (!connectedAccount) {
-      return res.status(400).json({ ok: false, error: "Connected wallet is required." });
+      return res.status(400).json({
+        ok: false,
+        error: "Missing connectedAccount."
+      });
     }
 
-    if (!["manual", "auto_pref"].includes(renewalPreference)) {
-      return res.status(400).json({ ok: false, error: "Invalid renewal preference." });
+    if (!["basic", "plus", "pro"].includes(plan)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid plan."
+      });
     }
 
-    const payloadBody = {
+    const created = await xumm.payload.create({
       txjson: {
-        TransactionType: "Payment",
-        Destination: RECEIVING_XRP_ADDRESS,
-        Amount: PLANS[plan].amountDrops,
-        Memos: [
-          buildMemo(`product:XRPL Universal Money Machine`),
-          buildMemo(`plan:${plan}`),
-          buildMemo(`renewal:${renewalPreference}`),
-          buildMemo(`term:30days`)
-        ]
-      },
-      options: {
-        return_url: {
-          app: `${PUBLIC_BASE_URL}/?flow=plan&id={id}`,
-          web: `${PUBLIC_BASE_URL}/?flow=plan&id={id}`
-        }
+        TransactionType: "SignIn"
       },
       custom_meta: {
-        identifier: `${plan}-${Date.now()}`,
-        instruction: `Approve payment to start ${PLANS[plan].label} plan for 30 days.`
-      }
-    };
-
-    const tracked = await createTrackedPayload({
-      payloadBody,
-      kind: "plan",
-      meta: {
-        plan,
-        renewalPreference,
-        connectedAccount
+        identifier: `xrpl-money-machine-plan-${plan}`,
+        instruction: `Approve ${safeCapitalize(plan)} plan activation`,
+        blob: {
+          connectedAccount,
+          action: "plan",
+          plan,
+          renewalPreference: renewalPreference || "manual"
+        }
       }
     });
 
-    res.json({
+    return res.json({
       ok: true,
-      uuid: tracked.uuid,
-      next: tracked.next,
-      qr: tracked.qr
+      uuid: created?.uuid,
+      next: created?.next?.always || "",
+      qr: created?.refs?.qr_png || ""
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Plan payload create error:", error);
+    return res.status(500).json({
       ok: false,
-      error: error.message || "Failed to create plan payload."
+      error: error?.message || "Failed to create plan payload."
     });
   }
 });
 
+/**
+ * Create SignIn payload for renewal
+ */
 app.post("/api/renew/create", async (req, res) => {
   try {
     const { plan, renewalPreference, connectedAccount } = req.body || {};
 
-    if (!plan || !PLANS[plan]) {
-      return res.status(400).json({ ok: false, error: "Invalid plan for renewal." });
-    }
-
     if (!connectedAccount) {
-      return res.status(400).json({ ok: false, error: "Connected wallet is required." });
+      return res.status(400).json({
+        ok: false,
+        error: "Missing connectedAccount."
+      });
     }
 
-    if (!["manual", "auto_pref"].includes(renewalPreference)) {
-      return res.status(400).json({ ok: false, error: "Invalid renewal preference." });
+    if (!["basic", "plus", "pro"].includes(plan)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid plan."
+      });
     }
 
-    const payloadBody = {
+    const created = await xumm.payload.create({
       txjson: {
-        TransactionType: "Payment",
-        Destination: RECEIVING_XRP_ADDRESS,
-        Amount: PLANS[plan].amountDrops,
-        Memos: [
-          buildMemo(`product:XRPL Universal Money Machine`),
-          buildMemo(`renewal_of:${plan}`),
-          buildMemo(`renewal:${renewalPreference}`),
-          buildMemo(`term:30days`)
-        ]
-      },
-      options: {
-        return_url: {
-          app: `${PUBLIC_BASE_URL}/?flow=renew&id={id}`,
-          web: `${PUBLIC_BASE_URL}/?flow=renew&id={id}`
-        }
+        TransactionType: "SignIn"
       },
       custom_meta: {
-        identifier: `renew-${plan}-${Date.now()}`,
-        instruction: `Approve payment to renew ${PLANS[plan].label} for another 30 days.`
-      }
-    };
-
-    const tracked = await createTrackedPayload({
-      payloadBody,
-      kind: "renew",
-      meta: {
-        plan,
-        renewalPreference,
-        connectedAccount
+        identifier: `xrpl-money-machine-renew-${plan}`,
+        instruction: `Approve ${safeCapitalize(plan)} renewal`,
+        blob: {
+          connectedAccount,
+          action: "renew",
+          plan,
+          renewalPreference: renewalPreference || "manual"
+        }
       }
     });
 
-    res.json({
+    return res.json({
       ok: true,
-      uuid: tracked.uuid,
-      next: tracked.next,
-      qr: tracked.qr
+      uuid: created?.uuid,
+      next: created?.next?.always || "",
+      qr: created?.refs?.qr_png || ""
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Renew payload create error:", error);
+    return res.status(500).json({
       ok: false,
-      error: error.message || "Failed to create renewal payload."
+      error: error?.message || "Failed to create renewal payload."
     });
   }
 });
 
-app.get("/api/payload-status/:uuid", (req, res) => {
-  const tracked = payloadStore.get(req.params.uuid);
+/**
+ * Poll payload status
+ */
+app.get("/api/payload-status/:uuid", async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const payload = await xumm.payload.get(uuid);
+    const status = payloadResponseToStatus(payload);
 
-  if (!tracked) {
-    return res.status(404).json({ ok: false, error: "Payload not found." });
+    return res.json({
+      ok: true,
+      ...status
+    });
+  } catch (error) {
+    console.error("Payload status error:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Unable to fetch payload status."
+    });
+  }
+});
+
+/**
+ * Finalize action after signed payload
+ * This removes ambiguity and avoids trusting only front-end state.
+ */
+app.post("/api/finalize", async (req, res) => {
+  try {
+    const { uuid, type, plan, renewalPreference } = req.body || {};
+
+    if (!uuid) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing uuid."
+      });
+    }
+
+    const payload = await xumm.payload.get(uuid);
+    const status = payloadResponseToStatus(payload);
+
+    if (!status.resolved) {
+      return res.status(400).json({
+        ok: false,
+        error: "Payload not resolved yet."
+      });
+    }
+
+    if (!status.signed) {
+      return res.status(400).json({
+        ok: false,
+        error: "Payload was rejected or cancelled."
+      });
+    }
+
+    const account = status.account;
+
+    if (!account) {
+      return res.status(400).json({
+        ok: false,
+        error: "No wallet account returned by payload."
+      });
+    }
+
+    if (type === "connect") {
+      return res.json({
+        ok: true,
+        account
+      });
+    }
+
+    if (type === "trial") {
+      const sub = setTrial(account);
+      return res.json({
+        ok: true,
+        account,
+        plan: sub.plan,
+        renewalPreference: sub.renewalPreference,
+        expiresAt: sub.expiresAt,
+        isTrial: sub.isTrial
+      });
+    }
+
+    if (type === "plan" || type === "renew") {
+      const sub = setPaidPlan(account, plan, renewalPreference || "manual");
+      return res.json({
+        ok: true,
+        account,
+        plan: sub.plan,
+        renewalPreference: sub.renewalPreference,
+        expiresAt: sub.expiresAt,
+        isTrial: sub.isTrial
+      });
+    }
+
+    return res.status(400).json({
+      ok: false,
+      error: "Invalid finalize type."
+    });
+  } catch (error) {
+    console.error("Finalize error:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Failed to finalize payload."
+    });
+  }
+});
+
+/**
+ * Read subscription by wallet
+ */
+app.get("/api/subscription/:account", (req, res) => {
+  const { account } = req.params;
+  const sub = getSubscription(account);
+
+  if (!sub) {
+    return res.json({
+      ok: true,
+      active: false
+    });
   }
 
-  res.json({
+  return res.json({
     ok: true,
-    uuid: tracked.uuid,
-    stage: tracked.stage,
-    opened: tracked.opened,
-    resolved: tracked.resolved,
-    signed: tracked.signed,
-    rejected: tracked.rejected,
-    account: tracked.account,
-    txid: tracked.txid,
-    plan: tracked.plan || null,
-    renewalPreference: tracked.renewalPreference || null,
-    expiresAt: tracked.expiresAt || null,
-    error: tracked.error || null
+    active: true,
+    ...sub
   });
 });
 
