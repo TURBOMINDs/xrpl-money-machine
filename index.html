@@ -5,216 +5,182 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>XRPL Universal Money Machine</title>
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
-      min-height: 100vh;
-      background: radial-gradient(circle at top, #0a0a0a, #000000);
-      color: white;
       font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
       text-align: center;
-      padding: 24px 16px 48px;
+      padding: 24px 16px 60px;
     }
 
     h1 {
-      color: gold;
-      font-size: clamp(32px, 5vw, 64px);
-      margin: 24px 0 10px;
-      text-shadow: 0 0 18px rgba(255, 165, 0, 0.55);
+      color: #ffcc00;
+      font-size: clamp(34px, 6vw, 72px);
+      line-height: 1.05;
+      margin: 18px auto 8px;
+      text-shadow: 0 0 18px rgba(255, 153, 0, 0.45);
+      max-width: 1000px;
     }
 
     .subtext {
-      color: #d7d7d7;
-      font-size: 18px;
-      margin: 8px 0;
+      font-size: clamp(20px, 2.4vw, 28px);
+      margin: 10px 0;
+      color: #e9e9e9;
     }
 
     .powered {
-      color: gold;
-      font-weight: bold;
-      font-size: 20px;
-      margin-bottom: 26px;
+      color: #ffcc00;
+      font-size: clamp(24px, 2.8vw, 40px);
+      font-weight: 700;
+      margin: 10px 0 28px;
+      text-shadow: 0 0 12px rgba(255, 204, 0, 0.35);
     }
 
     .wallet-box,
     .status-box,
     .payload-box {
-      max-width: 760px;
-      margin: 0 auto 18px;
-      background: #111;
-      border: 1px solid #2b2b2b;
-      border-radius: 16px;
-      padding: 18px;
-      box-shadow: 0 0 18px rgba(255, 140, 0, 0.16);
+      max-width: 900px;
+      margin: 0 auto 22px;
+      border: 1px solid rgba(255, 166, 0, 0.22);
+      border-radius: 24px;
+      padding: 28px 20px;
+      background: rgba(15, 15, 15, 0.92);
+      box-shadow: 0 0 30px rgba(255, 140, 0, 0.10);
     }
 
     .wallet-btn,
     .plan-btn,
-    .secondary-btn {
+    .secondary-btn,
+    .payload-link {
+      display: inline-block;
       border: none;
-      border-radius: 10px;
+      border-radius: 18px;
+      padding: 18px 28px;
+      min-width: 240px;
+      font-size: 18px;
+      font-weight: 700;
       cursor: pointer;
-      font-weight: bold;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      text-decoration: none;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .wallet-btn,
+    .payload-link {
+      background: linear-gradient(90deg, #1f8fff, #16d9ff);
+      color: #fff;
+      box-shadow: 0 0 22px rgba(0, 200, 255, 0.40);
+    }
+
+    .plan-btn {
+      background: linear-gradient(180deg, #ffde59, #ffb300);
+      color: #111;
+      box-shadow: 0 0 18px rgba(255, 196, 0, 0.35);
+    }
+
+    .secondary-btn {
+      background: #242424;
+      color: #fff;
+      border: 1px solid #4a4a4a;
     }
 
     .wallet-btn:hover,
     .plan-btn:hover,
-    .secondary-btn:hover {
-      transform: scale(1.03);
+    .secondary-btn:hover,
+    .payload-link:hover {
+      transform: translateY(-1px);
     }
 
-    .wallet-btn {
-      padding: 14px 28px;
-      background: linear-gradient(45deg, #1e90ff, #00e5ff);
-      color: white;
-      box-shadow: 0 0 18px rgba(0, 200, 255, 0.45);
-      font-size: 18px;
+    .status-text {
+      font-size: 22px;
+      margin: 18px 0 8px;
     }
 
-    .plan-btn {
-      margin-top: 12px;
-      padding: 12px 20px;
-      background: linear-gradient(45deg, orange, gold);
-      color: black;
-      width: 100%;
-      max-width: 220px;
-      font-size: 18px;
-      box-shadow: 0 0 14px rgba(255, 165, 0, 0.28);
+    .red {
+      color: #ff7a7a;
+      font-weight: 700;
     }
 
-    .secondary-btn {
-      margin-top: 10px;
-      padding: 10px 16px;
-      background: #222;
-      color: #fff;
-      border: 1px solid #444;
-    }
-
-    .secondary-btn:hover {
-      box-shadow: 0 0 10px rgba(255,255,255,0.12);
+    .green {
+      color: #6dff9d;
+      font-weight: 700;
     }
 
     .muted {
-      color: #bbbbbb;
-      font-size: 14px;
-    }
-
-    .highlight {
-      color: yellow;
-      font-weight: bold;
-    }
-
-    .good {
-      color: #7CFF7C;
-      font-weight: bold;
-    }
-
-    .bad {
-      color: #ff8d8d;
-      font-weight: bold;
+      color: #aaa;
     }
 
     .wallet-address {
+      margin-top: 12px;
       word-break: break-all;
-      font-size: 14px;
-      color: #9fe9ff;
-      margin-top: 8px;
+      color: #7fd9ff;
+      font-size: 15px;
     }
 
-    .container {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
+    .plans {
+      max-width: 1200px;
+      margin: 28px auto 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
       gap: 22px;
-      margin-top: 28px;
     }
 
-    .card {
-      width: 320px;
-      background: #111;
-      border: 3px solid #3b2a14;
-      border-radius: 18px;
-      padding: 24px 20px;
-      box-shadow: 0 0 24px rgba(255, 140, 0, 0.22);
-      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    .plan-card {
+      border: 1px solid rgba(255, 166, 0, 0.25);
+      border-radius: 24px;
+      padding: 28px 20px 26px;
+      background: rgba(15, 15, 15, 0.94);
+      box-shadow: 0 0 28px rgba(255, 140, 0, 0.10);
     }
 
-    .card:hover {
-      transform: translateY(-2px) scale(1.01);
-      box-shadow: 0 0 28px rgba(255, 165, 0, 0.35);
-    }
-
-    .card h2 {
+    .plan-card h2 {
       margin-top: 0;
-      font-size: 24px;
+      margin-bottom: 20px;
+      font-size: 28px;
       color: #fff;
     }
 
-    .price {
-      margin: 10px 0 4px;
+    .plan-card p {
+      margin: 14px 0;
       font-size: 18px;
-      color: #f6f6f6;
-      font-weight: bold;
     }
 
-    .plan-term {
-      color: yellow;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-
-    .renew-wrap {
-      margin-top: 14px;
-    }
-
-    .renew-wrap label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 14px;
-      color: #ddd;
+    .highlight {
+      color: #ffe600;
+      font-weight: 700;
     }
 
     select {
       width: 100%;
-      max-width: 240px;
-      padding: 10px;
-      border-radius: 10px;
+      margin: 14px 0 18px;
+      padding: 12px 14px;
+      border-radius: 12px;
       border: 1px solid #555;
-      background: #0d0d0d;
-      color: white;
-      font-size: 14px;
+      background: #111;
+      color: #fff;
+      font-size: 16px;
     }
 
     .payload-actions {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
       gap: 12px;
-      margin-top: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 14px 0 18px;
     }
 
-    .payload-link {
-      display: inline-block;
-      padding: 12px 18px;
-      border-radius: 10px;
-      background: linear-gradient(45deg, #1e90ff, #00e5ff);
-      color: white;
-      font-weight: bold;
-      text-decoration: none;
-    }
-
-    .qr-wrap {
-      margin-top: 16px;
-    }
-
-    .qr-wrap img {
-      width: 220px;
-      max-width: 90%;
-      border-radius: 12px;
-      background: white;
+    .payload-qr {
+      width: 240px;
+      max-width: 85vw;
+      border-radius: 18px;
+      background: #fff;
       padding: 8px;
+      margin: 8px auto 0;
+      display: block;
     }
 
     .hidden {
@@ -224,6 +190,7 @@
     .tiny {
       font-size: 12px;
       color: #999;
+      margin-top: 12px;
     }
   </style>
 </head>
@@ -234,103 +201,78 @@
 
   <div class="wallet-box">
     <button id="connectBtn" class="wallet-btn">Connect Xaman Wallet</button>
-    <p id="walletStatus" style="font-size: 18px; margin: 16px 0 6px;">Status: Not connected</p>
+    <p id="walletStatus" class="status-text">Status: <span class="red">Not connected</span></p>
     <div id="walletAddress" class="wallet-address"></div>
   </div>
 
   <div class="status-box">
-    <p id="subscriptionStatus" style="font-size: 22px; margin: 8px 0;">
-      Status: No active subscription
-    </p>
-    <p id="renewStatus" class="muted" style="margin: 8px 0 0;"></p>
+    <p id="subscriptionStatus" class="status-text">Status: No active subscription</p>
+    <p id="renewStatus" class="muted"></p>
     <button id="renewNowBtn" class="secondary-btn hidden">Renew Current Plan</button>
   </div>
 
   <div id="payloadBox" class="payload-box hidden">
-    <h3 style="margin-top: 0;">Complete this in Xaman</h3>
+    <h3 style="margin-top:0;">Complete this in Xaman</h3>
     <p id="payloadMessage" class="muted">Waiting to create request...</p>
 
     <div class="payload-actions">
-      <a id="openXamanLink" class="payload-link hidden" href="#" target="_blank" rel="noopener noreferrer">
-        Open in Xaman
-      </a>
-      <button id="cancelWatchBtn" class="secondary-btn hidden">Stop Watching</button>
+      <a id="openXamanLink" class="payload-link hidden" href="#" target="_blank" rel="noopener noreferrer">Open in Xaman</a>
+      <button id="cancelWatchBtn" class="secondary-btn">Stop Watching</button>
     </div>
 
-    <div id="qrWrap" class="qr-wrap hidden">
-      <p class="muted">Or scan this QR code with Xaman:</p>
-      <img id="payloadQr" src="" alt="Xaman QR Code" />
-    </div>
+    <p class="muted">Or scan this QR code with Xaman:</p>
+    <img id="payloadQr" class="payload-qr hidden" alt="Xaman QR Code" />
 
-    <p class="tiny" style="margin-top: 14px;">
-      On mobile, the Xaman deep link should open the app. On desktop, QR is the fallback.
-    </p>
+    <p class="tiny">On mobile, the Xaman deep link should open the app. On desktop, QR is the fallback.</p>
   </div>
 
-  <div class="container">
-    <div class="card">
+  <div class="plans">
+    <div class="plan-card">
       <h2>Basic Access</h2>
       <p>5 AMMs</p>
       <p>2 Swaps / 24h</p>
-      <p class="plan-term">3 Day Free Trial</p>
-      <p class="price">$7 / month</p>
-
-      <div class="renew-wrap">
-        <label for="basicRenewal">Basic plan renewal</label>
-        <select id="basicRenewal">
-          <option value="manual">Manual renewal every 30 days</option>
-          <option value="auto_pref">Auto-renew preference</option>
-        </select>
-      </div>
-
+      <p class="highlight">3 Day Free Trial</p>
+      <p><strong>$7 / month</strong></p>
+      <p class="muted">Basic plan renewal</p>
+      <select id="basicRenewal">
+        <option value="manual">Manual renewal every 30 days</option>
+        <option value="auto">Automatic renewal every 30 days</option>
+      </select>
       <button id="trialBtn" class="plan-btn">Start Trial</button>
-      <button id="basicBtn" class="plan-btn">Begin Basic</button>
+      <div style="height:12px;"></div>
+      <button id="basicBtn" class="secondary-btn">Start Basic</button>
     </div>
 
-    <div class="card">
+    <div class="plan-card">
       <h2>Plus Access</h2>
       <p>15 AMMs</p>
       <p>5 Swaps / 24h</p>
-      <p class="plan-term">30 Day Plan</p>
-      <p class="price">$15 / month</p>
-
-      <div class="renew-wrap">
-        <label for="plusRenewal">Plus plan renewal</label>
-        <select id="plusRenewal">
-          <option value="manual">Manual renewal every 30 days</option>
-          <option value="auto_pref">Auto-renew preference</option>
-        </select>
-      </div>
-
+      <p class="highlight">30 Day Plan</p>
+      <p><strong>$15 / month</strong></p>
+      <p class="muted">Plus plan renewal</p>
+      <select id="plusRenewal">
+        <option value="manual">Manual renewal every 30 days</option>
+        <option value="auto">Automatic renewal every 30 days</option>
+      </select>
       <button id="plusBtn" class="plan-btn">Start Plus</button>
     </div>
 
-    <div class="card">
+    <div class="plan-card">
       <h2>Ultimate Pro</h2>
       <p>50 AMMs</p>
       <p>15 Swaps / 24h</p>
-      <p class="plan-term">30 Day Plan</p>
-      <p class="price">$25 / month</p>
-
-      <div class="renew-wrap">
-        <label for="proRenewal">Pro plan renewal</label>
-        <select id="proRenewal">
-          <option value="manual">Manual renewal every 30 days</option>
-          <option value="auto_pref">Auto-renew preference</option>
-        </select>
-      </div>
-
+      <p class="highlight">30 Day Plan</p>
+      <p><strong>$25 / month</strong></p>
+      <p class="muted">Pro plan renewal</p>
+      <select id="proRenewal">
+        <option value="manual">Manual renewal every 30 days</option>
+        <option value="auto">Automatic renewal every 30 days</option>
+      </select>
       <button id="proBtn" class="plan-btn">Go Pro</button>
     </div>
   </div>
 
   <script>
-    const STORAGE_KEY = "xrplUniversalMoneyMachineState";
-
-    const state = loadState();
-
-    let activeWatcher = null;
-
     const connectBtn = document.getElementById("connectBtn");
     const walletStatus = document.getElementById("walletStatus");
     const walletAddress = document.getElementById("walletAddress");
@@ -342,9 +284,8 @@
     const payloadBox = document.getElementById("payloadBox");
     const payloadMessage = document.getElementById("payloadMessage");
     const openXamanLink = document.getElementById("openXamanLink");
-    const cancelWatchBtn = document.getElementById("cancelWatchBtn");
-    const qrWrap = document.getElementById("qrWrap");
     const payloadQr = document.getElementById("payloadQr");
+    const cancelWatchBtn = document.getElementById("cancelWatchBtn");
 
     const trialBtn = document.getElementById("trialBtn");
     const basicBtn = document.getElementById("basicBtn");
@@ -355,139 +296,96 @@
     const plusRenewal = document.getElementById("plusRenewal");
     const proRenewal = document.getElementById("proRenewal");
 
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          return {
-            connected: false,
-            walletAddress: "",
-            activePlan: null,
-            renewalPreference: null,
-            expiresAt: null,
-            isTrial: false
-          };
-        }
-        return JSON.parse(raw);
-      } catch {
-        return {
-          connected: false,
-          walletAddress: "",
-          activePlan: null,
-          renewalPreference: null,
-          expiresAt: null,
-          isTrial: false
-        };
-      }
-    }
+    let activeWatcher = null;
 
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-
-    function clearExpiredIfNeeded() {
-      if (!state.expiresAt) return;
-      if (Date.now() > Number(state.expiresAt)) {
-        state.activePlan = null;
-        state.renewalPreference = null;
-        state.expiresAt = null;
-        state.isTrial = false;
-        saveState();
-      }
-    }
-
-    function formatDate(ts) {
-      return new Date(Number(ts)).toLocaleString();
-    }
-
-    function msToDays(ts) {
-      const diff = Number(ts) - Date.now();
-      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-    }
-
-    function render() {
-      clearExpiredIfNeeded();
-
-      if (state.connected && state.walletAddress) {
-        walletStatus.innerHTML = `Status: <span class="good">Connected</span>`;
-        walletAddress.textContent = state.walletAddress;
-      } else {
-        walletStatus.innerHTML = `Status: <span class="bad">Not connected</span>`;
-        walletAddress.textContent = "";
-      }
-
-      if (state.activePlan && state.expiresAt) {
-        const days = msToDays(state.expiresAt);
-        const planLabel = state.isTrial
-          ? "Trial Active"
-          : `${capitalize(state.activePlan)} Active`;
-
-        subscriptionStatus.innerHTML =
-          `Status: ${planLabel} <span class="highlight">(${days} Day${days === 1 ? "" : "s"} Remaining)</span>`;
-
-        const renewText = state.isTrial
-          ? `Trial ends on ${formatDate(state.expiresAt)}`
-          : `${capitalize(state.activePlan)} renews by manual approval every 30 days. Saved preference: ${formatRenewal(state.renewalPreference)}. Expires: ${formatDate(state.expiresAt)}`;
-
-        renewStatus.textContent = renewText;
-
-        if (!state.isTrial) {
-          renewNowBtn.classList.remove("hidden");
-        } else {
-          renewNowBtn.classList.add("hidden");
-        }
-      } else {
-        subscriptionStatus.textContent = "Status: No active subscription";
-        renewStatus.textContent = "";
-        renewNowBtn.classList.add("hidden");
-      }
-    }
+    const state = {
+      connected: false,
+      walletAddress: "",
+      activePlan: null,
+      renewalPreference: "manual",
+      expiresAt: null,
+      isTrial: false
+    };
 
     function capitalize(value) {
       if (!value) return "";
       return value.charAt(0).toUpperCase() + value.slice(1);
     }
 
-    function formatRenewal(value) {
-      return value === "auto_pref" ? "Auto-renew preference" : "Manual renewal";
+    function saveState() {
+      localStorage.setItem("xrplMoneyMachineState", JSON.stringify(state));
     }
 
-    function requireConnected() {
-      if (!state.connected || !state.walletAddress) {
-        alert("Connect your Xaman Wallet first.");
-        return false;
+    function loadState() {
+      const raw = localStorage.getItem("xrplMoneyMachineState");
+      if (!raw) return;
+
+      try {
+        const parsed = JSON.parse(raw);
+        Object.assign(state, parsed || {});
+      } catch (err) {
+        console.error(err);
       }
-      return true;
     }
 
-    function showPayloadUi(message, link, qr) {
-      payloadBox.classList.remove("hidden");
-      payloadMessage.textContent = message;
+    function render() {
+      if (state.connected && state.walletAddress) {
+        walletStatus.innerHTML = 'Status: <span class="green">Connected</span>';
+        walletAddress.textContent = state.walletAddress;
+        connectBtn.textContent = "Wallet Connected";
+      } else {
+        walletStatus.innerHTML = 'Status: <span class="red">Not connected</span>';
+        walletAddress.textContent = "";
+        connectBtn.textContent = "Connect Xaman Wallet";
+      }
 
-      if (link) {
-        openXamanLink.href = link;
+      if (!state.activePlan) {
+        subscriptionStatus.textContent = "Status: No active subscription";
+        renewStatus.textContent = "";
+        renewNowBtn.classList.add("hidden");
+        return;
+      }
+
+      const planLabel = capitalize(state.activePlan);
+      const trialText = state.isTrial ? " (Trial)" : "";
+      subscriptionStatus.textContent = `Status: ${planLabel}${trialText} active`;
+
+      const expiryText = state.expiresAt ? `Expires: ${new Date(state.expiresAt).toLocaleString()}` : "";
+      const renewText = state.renewalPreference ? `Renewal: ${capitalize(state.renewalPreference)}` : "";
+      renewStatus.textContent = [expiryText, renewText].filter(Boolean).join(" • ");
+
+      if (state.isTrial || state.activePlan) {
+        renewNowBtn.classList.remove("hidden");
+      } else {
+        renewNowBtn.classList.add("hidden");
+      }
+    }
+
+    function showPayloadUi(message, nextUrl, qrUrl) {
+      payloadBox.classList.remove("hidden");
+      payloadMessage.textContent = message || "Waiting for approval...";
+
+      if (nextUrl) {
+        openXamanLink.href = nextUrl;
         openXamanLink.classList.remove("hidden");
       } else {
         openXamanLink.classList.add("hidden");
       }
 
-      if (qr) {
-        payloadQr.src = qr;
-        qrWrap.classList.remove("hidden");
+      if (qrUrl) {
+        payloadQr.src = qrUrl;
+        payloadQr.classList.remove("hidden");
       } else {
-        qrWrap.classList.add("hidden");
+        payloadQr.classList.add("hidden");
       }
-
-      cancelWatchBtn.classList.remove("hidden");
     }
 
     function hidePayloadUi() {
       payloadBox.classList.add("hidden");
       openXamanLink.classList.add("hidden");
-      qrWrap.classList.add("hidden");
-      cancelWatchBtn.classList.add("hidden");
+      payloadQr.classList.add("hidden");
       payloadQr.src = "";
-      payloadMessage.textContent = "";
+      openXamanLink.href = "#";
     }
 
     function stopWatching() {
@@ -495,112 +393,207 @@
         clearInterval(activeWatcher);
         activeWatcher = null;
       }
+      hidePayloadUi();
+    }
+
+    async function fetchSubscription(account) {
+      if (!account) return;
+
+      try {
+        const res = await fetch(`/api/subscription/${encodeURIComponent(account)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) return;
+
+        if (!data.active) {
+          state.activePlan = null;
+          state.renewalPreference = "manual";
+          state.expiresAt = null;
+          state.isTrial = false;
+          saveState();
+          render();
+          return;
+        }
+
+        state.activePlan = data.plan;
+        state.renewalPreference = data.renewalPreference || "manual";
+        state.expiresAt = data.expiresAt || null;
+        state.isTrial = !!data.isTrial;
+
+        saveState();
+        render();
+      } catch (err) {
+        console.error(err);
+      }
     }
 
     async function startConnectFlow() {
-      stopWatching();
+      try {
+        stopWatching();
 
-      const res = await fetch("/api/connect/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
+        const res = await fetch("/api/connect/create", {
+          method: "POST"
+        });
 
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Failed to create connect request.");
-        return;
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alert(data.error || "Failed to create connect request.");
+          return;
+        }
+
+        showPayloadUi(
+          "Approve the SignIn request in Xaman to connect your wallet.",
+          data.next,
+          data.qr
+        );
+
+        watchPayload(data.uuid, "connect");
+      } catch (err) {
+        console.error(err);
+        alert("Unable to start wallet connection.");
       }
-
-      showPayloadUi(
-        "Approve the SignIn request in Xaman to connect your wallet.",
-        data.next,
-        data.qr
-      );
-
-      watchPayload(data.uuid, "connect");
     }
 
     async function startTrialFlow() {
-      if (!requireConnected()) return;
+      try {
+        if (!state.connected || !state.walletAddress) {
+          alert("Please connect your Xaman wallet first.");
+          return;
+        }
 
-      const expiresAt = Date.now() + (3 * 24 * 60 * 60 * 1000);
+        stopWatching();
 
-      state.activePlan = "basic";
-      state.renewalPreference = "manual";
-      state.expiresAt = expiresAt;
-      state.isTrial = true;
+        const res = await fetch("/api/trial/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            connectedAccount: state.walletAddress
+          })
+        });
 
-      saveState();
-      render();
+        const data = await res.json();
 
-      alert("🔥 3 Day Trial Activated!");
+        if (!res.ok || !data.ok) {
+          alert(data.error || "Failed to create trial request.");
+          return;
+        }
+
+        showPayloadUi(
+          "Approve the Basic 3 Day Free Trial in Xaman.",
+          data.next,
+          data.qr
+        );
+
+        watchPayload(data.uuid, "trial");
+      } catch (err) {
+        console.error(err);
+        alert("Unable to start trial.");
+      }
     }
 
     async function startPaidPlan(plan, renewalPreference) {
-      if (!requireConnected()) return;
+      try {
+        if (!state.connected || !state.walletAddress) {
+          alert("Please connect your Xaman wallet first.");
+          return;
+        }
 
-      stopWatching();
+        stopWatching();
 
-      const res = await fetch("/api/plan/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan,
-          renewalPreference,
-          connectedAccount: state.walletAddress
-        })
-      });
+        const res = await fetch("/api/plan/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            plan,
+            renewalPreference,
+            connectedAccount: state.walletAddress
+          })
+        });
 
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Failed to create plan request.");
-        return;
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alert(data.error || "Failed to create plan request.");
+          return;
+        }
+
+        showPayloadUi(
+          `Approve the ${capitalize(plan)} plan in Xaman.`,
+          data.next,
+          data.qr
+        );
+
+        watchPayload(data.uuid, "plan", plan, renewalPreference);
+      } catch (err) {
+        console.error(err);
+        alert("Unable to start plan.");
       }
-
-      showPayloadUi(
-        `Approve the ${capitalize(plan)} plan request in Xaman.`,
-        data.next,
-        data.qr
-      );
-
-      watchPayload(data.uuid, "plan");
     }
 
     async function renewCurrentPlan() {
-      if (!requireConnected()) return;
-      if (!state.activePlan || state.isTrial) {
-        alert("No paid plan available to renew.");
-        return;
+      try {
+        if (!state.connected || !state.walletAddress || !state.activePlan) {
+          alert("No active connected plan to renew.");
+          return;
+        }
+
+        stopWatching();
+
+        const res = await fetch("/api/renew/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            plan: state.activePlan,
+            renewalPreference: state.renewalPreference || "manual",
+            connectedAccount: state.walletAddress
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          alert(data.error || "Failed to create renewal request.");
+          return;
+        }
+
+        showPayloadUi(
+          `Approve the ${capitalize(state.activePlan)} renewal in Xaman.`,
+          data.next,
+          data.qr
+        );
+
+        watchPayload(data.uuid, "renew", state.activePlan, state.renewalPreference);
+      } catch (err) {
+        console.error(err);
+        alert("Unable to create renewal request.");
       }
+    }
 
-      stopWatching();
-
-      const res = await fetch("/api/renew/create", {
+    async function finalizePayload(uuid, type, plan, renewalPreference) {
+      const res = await fetch("/api/finalize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
-          plan: state.activePlan,
-          renewalPreference: state.renewalPreference || "manual",
-          connectedAccount: state.walletAddress
+          uuid,
+          type,
+          plan,
+          renewalPreference
         })
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Failed to create renewal request.");
-        return;
-      }
-
-      showPayloadUi(
-        `Approve the ${capitalize(state.activePlan)} renewal in Xaman.`,
-        data.next,
-        data.qr
-      );
-
-      watchPayload(data.uuid, "renew");
+      return res.json();
     }
 
-    function watchPayload(uuid, type) {
+    function watchPayload(uuid, type, plan = null, renewalPreference = "manual") {
       stopWatching();
 
       activeWatcher = setInterval(async () => {
@@ -608,7 +601,7 @@
           const res = await fetch(`/api/payload-status/${uuid}`);
           const data = await res.json();
 
-          if (!res.ok) {
+          if (!res.ok || !data.ok) {
             stopWatching();
             alert(data.error || "Unable to fetch payload status.");
             return;
@@ -618,37 +611,43 @@
             payloadMessage.textContent = "Payload opened in Xaman. Waiting for approval...";
           }
 
-          if (data.resolved) {
-            stopWatching();
+          if (!data.resolved) return;
 
-            if (!data.signed) {
-              hidePayloadUi();
-              alert("Request was rejected or cancelled.");
-              return;
-            }
+          stopWatching();
 
-            if (type === "connect") {
-              state.connected = true;
-              state.walletAddress = data.account || "";
-              saveState();
-              render();
-              hidePayloadUi();
-              alert("Xaman Wallet connected!");
-              return;
-            }
+          if (!data.signed) {
+            alert("Request was rejected or cancelled.");
+            return;
+          }
 
-            if (type === "plan" || type === "renew") {
-              state.connected = true;
-              state.walletAddress = data.account || state.walletAddress;
-              state.activePlan = data.plan;
-              state.renewalPreference = data.renewalPreference;
-              state.expiresAt = data.expiresAt;
-              state.isTrial = false;
-              saveState();
-              render();
-              hidePayloadUi();
-              alert(`${capitalize(data.plan)} plan activated successfully!`);
-            }
+          const finalData = await finalizePayload(uuid, type, plan, renewalPreference);
+
+          if (!finalData.ok) {
+            alert(finalData.error || "Failed to finalize request.");
+            return;
+          }
+
+          if (type === "connect") {
+            state.connected = true;
+            state.walletAddress = finalData.account || "";
+            saveState();
+            render();
+            await fetchSubscription(state.walletAddress);
+            alert("Xaman Wallet connected!");
+            return;
+          }
+
+          if (type === "trial" || type === "plan" || type === "renew") {
+            state.connected = true;
+            state.walletAddress = finalData.account || state.walletAddress;
+            state.activePlan = finalData.plan;
+            state.renewalPreference = finalData.renewalPreference || "manual";
+            state.expiresAt = finalData.expiresAt || null;
+            state.isTrial = !!finalData.isTrial;
+            saveState();
+            render();
+            alert(`${capitalize(finalData.plan)} plan activated successfully!`);
+            return;
           }
         } catch (err) {
           console.error(err);
@@ -664,7 +663,12 @@
     renewNowBtn.addEventListener("click", renewCurrentPlan);
     cancelWatchBtn.addEventListener("click", stopWatching);
 
+    loadState();
     render();
+
+    if (state.connected && state.walletAddress) {
+      fetchSubscription(state.walletAddress);
+    }
   </script>
 </body>
 </html>
