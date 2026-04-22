@@ -5,7 +5,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const xumm = require("xumm");
+const XummSdk   = require("xumm");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,7 +18,7 @@ if (!XUMM_API_KEY || !XUMM_API_SECRET) {
   process.exit(1);
 }
 
-const xumm = new XummSdk(XUMM_API_KEY, XUMM_API_SECRET);
+const sdk = new XummSdk(XUMM_API_KEY, XUMM_API_SECRET);
 
 app.use(cors());
 app.use(express.json());
@@ -208,7 +208,7 @@ app.post("/api/plan/create", async (req, res) => {
       });
     }
 
-    const created = await xumm.payload.create({
+    const created = await sdk.payload.create({
       txjson: {
         TransactionType: "SignIn"
       },
