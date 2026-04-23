@@ -5,114 +5,123 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const { XummSdk } = require("xumm-sdk");
+const { Xumm } = require("xumm");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const XUMM_API_KEY = process.env.XUMM_API_KEY;
-const XUMM_API_SECRET = process.env.XUMM_API_SECRET;
+// Support either old env names (XUMM_*) or newer ones (XAMAN_*)
+const API_KEY = process.env.XUMM_API_KEY || process.env.XAMAN_API_KEY;
+const API_SECRET = process.env.XUMM_API_SECRET || process.env.XAMAN_API_SECRET;
+const PUBLIC_BASE_URL =
+  process.env.PUBLIC_BASE_URL || `http://localhost:${PORT}`;
+const RECEIVING_XRP_ADDRESS = process.env.RECEIVING_XRP_ADDRESS || "";
 
-if (!XUMM_API_KEY || !XUMM_API_SECRET) {
-  console.error("Missing XUMM_API_KEY or XUMM_API_SECRET in environment variables.");
+if (!API_KEY || !API_SECRET) {
+  console.error(
+    "Missing XUMM_API_KEY/XUMM_API_SECRET (or XAMAN_API_KEY/XAMAN_API_SECRET) in environment variables."
+  );
   process.exit(1);
 }
 
-const sdk = new XummSdk(XUMM_API_KEY, XUMM_API_SECRET);
+const xumm = new Xumm(API_KEY, API_SECRET);
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 /**
- * Temporary in-memory subscription store.
- * Good enough for debugging wallet connect + flow.
- * Later you can move this into a database.
+ * Simple in-memory stores for testing.
+ * Later you can move these into a database.
  */
-const subscriptions = new Map();
+const subscriptions = new Map(); // account -> subscription
+const pendingActions = new Map(); // uuid -> action metadata
 
-/**
- * Helpers
- */
+function normalizeAccount(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function safeCapitalize(value) {
   if (!value || typeof value !== "string") return "";
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function getSubscription(account) {
-  if (!account) return null;
-  return subscriptions.get(account) || null;
+function addDaysIso(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
 }
 
-function setTrial(account) {
-  const now = Date.now();
-  const expiresAt = new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
-
-  const sub = {
-    account,
-    plan: "basic",
-    renewalPreference: "manual",
-    isTrial: true,
-    expiresAt
-  };
-
-  subscriptions.set(account, sub);
-  return sub;
-}
-
-function setPaidPlan(account, plan, renewalPreference = "manual") {
-  const now = Date.now();
-  const expiresAt = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
-
-  const sub = {
+function buildSubscription({
+  account,
+  plan,
+  renewalPreference = "manual",
+  isTrial = false,
+  expiresAt = null
+}) {
+  return {
     account,
     plan,
     renewalPreference,
-    isTrial: false,
-    expiresAt
+    isTrial,
+    expiresAt,
+    updatedAt: new Date().toISOString()
   };
+}
 
-  subscriptions.set(account, sub);
+function getSubscription(account) {
+  return subscriptions.get(account) || null;
+}
+
+function setSubscription(sub) {
+  subscriptions.set(sub.account, sub);
   return sub;
 }
 
-function payloadResponseToStatus(payload) {
-  const resolved = !!payload?.meta?.resolved;
-  const signed = !!payload?.meta?.signed;
-  const opened = !!payload?.meta?.opened;
-  const account =
-    payload?.response?.account ||
-    payload?.response?.txid_account ||
-    payload?.application?.issued_user_token ||
-    "";
-
-  let stage = "created";
-  if (resolved && signed) stage = "signed";
-  else if (resolved && !signed) stage = "rejected";
-  else if (opened) stage = "opened";
-
-  return {
-    resolved,
-    signed,
-    opened,
-    account,
-    stage
-  };
+function getOpenLink(created) {
+  return (
+    created?.next?.always ||
+    created?.next?.no_push_msg_received ||
+    created?.next?.no_push_msg_received_web ||
+    ""
+  );
 }
 
-/**
- * Health check
- */
-app.get("/api/health", (_req, res) => {
+function getQrLink(created) {
+  return (
+    created?.refs?.qr_png ||
+    created?.refs?.qr_matrix ||
+    created?.refs?.qr_uri_quality_opts?.[0] ||
+    ""
+  );
+}
+
+app.get("/api/health", async (_req, res) => {
+  try {
+    const pong = await xumm.ping();
+    res.json({
+      ok: true,
+      app: pong?.application?.name || "connected",
+      publicBaseUrl: PUBLIC_BASE_URL,
+      receivingAddress: RECEIVING_XRP_ADDRESS
+    });
+  } catch (err) {
+    console.error("Ping failed:", err);
+    res.status(500).json({
+      ok: false,
+      error: "Failed to reach Xaman."
+    });
+  }
+});
+
+app.get("/api/config", (_req, res) => {
   res.json({
     ok: true,
-    message: "XRPL Money Machine server is running."
+    publicBaseUrl: PUBLIC_BASE_URL,
+    receivingAddress: RECEIVING_XRP_ADDRESS
   });
 });
 
-/**
- * Create SignIn payload for wallet connect
- */
 app.post("/api/connect/create", async (_req, res) => {
   try {
     const created = await xumm.payload.create({
@@ -121,32 +130,36 @@ app.post("/api/connect/create", async (_req, res) => {
       },
       custom_meta: {
         identifier: "xrpl-money-machine-connect",
-        instruction: "Sign in to XRPL Universal Money Machine"
+        instruction: "Approve SignIn in Xaman to connect your wallet.",
+        blob: {
+          type: "connect"
+        }
       }
+    });
+
+    pendingActions.set(created.uuid, {
+      type: "connect",
+      createdAt: new Date().toISOString()
     });
 
     return res.json({
       ok: true,
-      uuid: created?.uuid,
-      next: created?.next?.always || "",
-      qr: created?.refs?.qr_png || ""
+      uuid: created.uuid,
+      next: getOpenLink(created),
+      qr: getQrLink(created)
     });
-  } catch (error) {
-    console.error("Connect payload create error:", error);
+  } catch (err) {
+    console.error("Connect create error:", err);
     return res.status(500).json({
       ok: false,
-      error: error?.message || "Failed to create connect payload."
+      error: "Failed to create connect request."
     });
   }
 });
 
-/**
- * Create SignIn payload for starting trial
- * We reuse SignIn so the user explicitly approves with the same wallet.
- */
-app.post("/api/trial/create", async (req, res) => {
+app.post("/api/trial/start", (req, res) => {
   try {
-    const { connectedAccount } = req.body || {};
+    const connectedAccount = normalizeAccount(req.body?.connectedAccount);
 
     if (!connectedAccount) {
       return res.status(400).json({
@@ -155,44 +168,43 @@ app.post("/api/trial/create", async (req, res) => {
       });
     }
 
-    const created = await xumm.payload.create({
-      txjson: {
-        TransactionType: "SignIn"
-      },
-      custom_meta: {
-        identifier: "xrpl-money-machine-basic-trial",
-        instruction: "Approve Basic 3 Day Free Trial",
-        blob: {
-          connectedAccount,
-          action: "trial",
-          plan: "basic"
-        }
-      }
+    const existing = getSubscription(connectedAccount);
+
+    if (existing?.isTrial) {
+      return res.status(400).json({
+        ok: false,
+        error: "Trial already active for this wallet."
+      });
+    }
+
+    const trial = buildSubscription({
+      account: connectedAccount,
+      plan: "basic",
+      renewalPreference: "manual",
+      isTrial: true,
+      expiresAt: addDaysIso(3)
     });
+
+    setSubscription(trial);
 
     return res.json({
       ok: true,
-      uuid: created?.uuid,
-      next: created?.next?.always || "",
-      qr: created?.refs?.qr_png || ""
+      ...trial
     });
-  } catch (error) {
-    console.error("Trial payload create error:", error);
+  } catch (err) {
+    console.error("Trial start error:", err);
     return res.status(500).json({
       ok: false,
-      error: error?.message || "Failed to create trial payload."
+      error: "Failed to start trial."
     });
   }
 });
 
-/**
- * Create SignIn payload for paid plan activation
- * This is still a connect/approval flow for now.
- * You can later replace this with real payment txjson.
- */
 app.post("/api/plan/create", async (req, res) => {
   try {
-    const { plan, renewalPreference, connectedAccount } = req.body || {};
+    const connectedAccount = normalizeAccount(req.body?.connectedAccount);
+    const plan = req.body?.plan;
+    const renewalPreference = req.body?.renewalPreference || "manual";
 
     if (!connectedAccount) {
       return res.status(400).json({
@@ -208,7 +220,7 @@ app.post("/api/plan/create", async (req, res) => {
       });
     }
 
-    const created = await sdk.payload.create({
+    const created = await xumm.payload.create({
       txjson: {
         TransactionType: "SignIn"
       },
@@ -216,35 +228,42 @@ app.post("/api/plan/create", async (req, res) => {
         identifier: `xrpl-money-machine-plan-${plan}`,
         instruction: `Approve ${safeCapitalize(plan)} plan activation`,
         blob: {
+          type: "plan",
           connectedAccount,
-          action: "plan",
           plan,
-          renewalPreference: renewalPreference || "manual"
+          renewalPreference
         }
       }
     });
 
+    pendingActions.set(created.uuid, {
+      type: "plan",
+      connectedAccount,
+      plan,
+      renewalPreference,
+      createdAt: new Date().toISOString()
+    });
+
     return res.json({
       ok: true,
-      uuid: created?.uuid,
-      next: created?.next?.always || "",
-      qr: created?.refs?.qr_png || ""
+      uuid: created.uuid,
+      next: getOpenLink(created),
+      qr: getQrLink(created)
     });
-  } catch (error) {
-    console.error("Plan payload create error:", error);
+  } catch (err) {
+    console.error("Plan create error:", err);
     return res.status(500).json({
       ok: false,
-      error: error?.message || "Failed to create plan payload."
+      error: "Failed to create plan request."
     });
   }
 });
 
-/**
- * Create SignIn payload for renewal
- */
 app.post("/api/renew/create", async (req, res) => {
   try {
-    const { plan, renewalPreference, connectedAccount } = req.body || {};
+    const connectedAccount = normalizeAccount(req.body?.connectedAccount);
+    const plan = req.body?.plan;
+    const renewalPreference = req.body?.renewalPreference || "manual";
 
     if (!connectedAccount) {
       return res.status(400).json({
@@ -268,104 +287,106 @@ app.post("/api/renew/create", async (req, res) => {
         identifier: `xrpl-money-machine-renew-${plan}`,
         instruction: `Approve ${safeCapitalize(plan)} renewal`,
         blob: {
+          type: "renew",
           connectedAccount,
-          action: "renew",
           plan,
-          renewalPreference: renewalPreference || "manual"
+          renewalPreference
         }
       }
     });
 
+    pendingActions.set(created.uuid, {
+      type: "renew",
+      connectedAccount,
+      plan,
+      renewalPreference,
+      createdAt: new Date().toISOString()
+    });
+
     return res.json({
       ok: true,
-      uuid: created?.uuid,
-      next: created?.next?.always || "",
-      qr: created?.refs?.qr_png || ""
+      uuid: created.uuid,
+      next: getOpenLink(created),
+      qr: getQrLink(created)
     });
-  } catch (error) {
-    console.error("Renew payload create error:", error);
+  } catch (err) {
+    console.error("Renew create error:", err);
     return res.status(500).json({
       ok: false,
-      error: error?.message || "Failed to create renewal payload."
+      error: "Failed to create renewal request."
     });
   }
 });
 
-/**
- * Poll payload status
- */
 app.get("/api/payload-status/:uuid", async (req, res) => {
   try {
-    const { uuid } = req.params;
-    const payload = await xumm.payload.get(uuid);
-    const status = payloadResponseToStatus(payload);
+    const uuid = req.params.uuid;
+    const pending = pendingActions.get(uuid);
 
-    return res.json({
-      ok: true,
-      ...status
-    });
-  } catch (error) {
-    console.error("Payload status error:", error);
-    return res.status(500).json({
-      ok: false,
-      error: error?.message || "Unable to fetch payload status."
-    });
-  }
-});
-
-/**
- * Finalize action after signed payload
- * This removes ambiguity and avoids trusting only front-end state.
- */
-app.post("/api/finalize", async (req, res) => {
-  try {
-    const { uuid, type, plan, renewalPreference } = req.body || {};
-
-    if (!uuid) {
-      return res.status(400).json({
+    if (!pending) {
+      return res.status(404).json({
         ok: false,
-        error: "Missing uuid."
+        error: "Unknown payload UUID."
       });
     }
 
     const payload = await xumm.payload.get(uuid);
-    const status = payloadResponseToStatus(payload);
+    const response = payload?.response || {};
+    const account = normalizeAccount(response.account || "");
 
-    if (!status.resolved) {
-      return res.status(400).json({
-        ok: false,
-        error: "Payload not resolved yet."
-      });
-    }
+    const resolved = !!response.resolved;
+    const signed = !!response.signed;
 
-    if (!status.signed) {
-      return res.status(400).json({
-        ok: false,
-        error: "Payload was rejected or cancelled."
-      });
-    }
-
-    const account = status.account;
-
-    if (!account) {
-      return res.status(400).json({
-        ok: false,
-        error: "No wallet account returned by payload."
-      });
-    }
-
-    if (type === "connect") {
+    if (!resolved) {
       return res.json({
         ok: true,
+        resolved: false,
+        signed: false,
+        stage: "opened"
+      });
+    }
+
+    if (!signed) {
+      pendingActions.delete(uuid);
+      return res.json({
+        ok: true,
+        resolved: true,
+        signed: false,
+        stage: "cancelled"
+      });
+    }
+
+    if (pending.type === "connect") {
+      pendingActions.delete(uuid);
+      return res.json({
+        ok: true,
+        resolved: true,
+        signed: true,
+        stage: "connected",
         account
       });
     }
 
-    if (type === "trial") {
-      const sub = setTrial(account);
+    if (pending.type === "plan" || pending.type === "renew") {
+      const finalAccount = pending.connectedAccount || account;
+
+      const sub = buildSubscription({
+        account: finalAccount,
+        plan: pending.plan,
+        renewalPreference: pending.renewalPreference || "manual",
+        isTrial: false,
+        expiresAt: addDaysIso(30)
+      });
+
+      setSubscription(sub);
+      pendingActions.delete(uuid);
+
       return res.json({
         ok: true,
-        account,
+        resolved: true,
+        signed: true,
+        stage: pending.type === "renew" ? "renewed" : "activated",
+        account: finalAccount,
         plan: sub.plan,
         renewalPreference: sub.renewalPreference,
         expiresAt: sub.expiresAt,
@@ -373,50 +394,52 @@ app.post("/api/finalize", async (req, res) => {
       });
     }
 
-    if (type === "plan" || type === "renew") {
-      const sub = setPaidPlan(account, plan, renewalPreference || "manual");
-      return res.json({
-        ok: true,
-        account,
-        plan: sub.plan,
-        renewalPreference: sub.renewalPreference,
-        expiresAt: sub.expiresAt,
-        isTrial: sub.isTrial
-      });
-    }
+    pendingActions.delete(uuid);
 
-    return res.status(400).json({
-      ok: false,
-      error: "Invalid finalize type."
+    return res.json({
+      ok: true,
+      resolved: true,
+      signed: true,
+      stage: "done",
+      account
     });
-  } catch (error) {
-    console.error("Finalize error:", error);
+  } catch (err) {
+    console.error("Payload status error:", err);
     return res.status(500).json({
       ok: false,
-      error: error?.message || "Failed to finalize payload."
+      error: "Unable to fetch payload status."
     });
   }
 });
 
-/**
- * Read subscription by wallet
- */
 app.get("/api/subscription/:account", (req, res) => {
-  const { account } = req.params;
-  const sub = getSubscription(account);
+  try {
+    const account = normalizeAccount(req.params.account);
 
-  if (!sub) {
+    if (!account) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing account."
+      });
+    }
+
+    const sub = getSubscription(account);
+
     return res.json({
       ok: true,
-      active: false
+      subscription: sub
+    });
+  } catch (err) {
+    console.error("Subscription fetch error:", err);
+    return res.status(500).json({
+      ok: false,
+      error: "Failed to fetch subscription."
     });
   }
+});
 
-  return res.json({
-    ok: true,
-    active: true,
-    ...sub
-  });
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.listen(PORT, () => {
