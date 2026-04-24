@@ -25,18 +25,18 @@
   },
   {
     "content": "Phase 2: All 12 user stories covered end-to-end",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 3: End-to-end testing via testing_agent_v3",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 3: Fix all bugs reported by testing agent",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Finish + deliverables summary",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
