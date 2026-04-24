@@ -1,0 +1,115 @@
+{
+  "summary": "Completed comprehensive testing of XRPL Universal Money Machine - backend APIs 95% successful, frontend core functionality working with some UI issues",
+  "backend_issues": {
+    "minor_bugs": [
+      {
+        "endpoint": "/api/subscriptions/start-trial",
+        "issue": "Returns 400 'subscription already active' when user already has subscription",
+        "impact": "Expected behavior - prevents duplicate trials",
+        "fix_priority": "LOW"
+      }
+    ],
+    "working_endpoints": [
+      "/api/health - returns XRP/USD price correctly",
+      "/api/subscriptions/plans - returns 3 tiers with proper structure",
+      "/api/ranks/definitions - returns all 8 rank definitions",
+      "/api/alerts/events - returns public demo events",
+      "/api/auth/xaman/signin - creates payment payloads",
+      "/api/auth/xaman/mock-resolve - authenticates users correctly",
+      "/api/me - returns user info with subscription and slots",
+      "/api/subscriptions/subscribe - creates payment intents",
+      "/api/subscriptions/mock-resolve/{intent_id} - activates subscriptions",
+      "/api/amm/pairs - CRUD operations work",
+      "/api/amm/pairs/{id}/chart - returns synthetic OHLCV data",
+      "/api/amm/pairs/{id}/stats - returns pair statistics",
+      "/api/alerts - creates and lists price alerts",
+      "/api/ranks/config - manages rank preferences",
+      "/api/notifications/onesignal/config - returns mock config",
+      "/api/notifications/test - sends mock notifications"
+    ]
+  },
+  "frontend_issues": {
+    "critical_bugs": [
+      {
+        "component": "PriceAlertsModal",
+        "issue": "Modal overlay blocks navigation after closing - prevents clicking other nav items",
+        "selector": ".dialog-overlay",
+        "fix_priority": "CRITICAL"
+      }
+    ],
+    "ui_bugs": [
+      {
+        "component": "CandlestickChart",
+        "issue": "Chart rendering errors - width/height = -1",
+        "selector": ".chart-container",
+        "fix_priority": "HIGH"
+      },
+      {
+        "component": "TopNav",
+        "issue": "Address badge not displaying XRPL address",
+        "selector": "[data-testid*='address']",
+        "fix_priority": "MEDIUM"
+      },
+      {
+        "component": "Dashboard",
+        "issue": "Nested button elements causing React hydration errors",
+        "selector": "button > button",
+        "fix_priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Navigation between pages",
+        "issue": "Inconsistent navigation element visibility - Settings/Dashboard nav not always found",
+        "affected_selectors": ["text=Settings", "text=Dashboard"]
+      }
+    ],
+    "working_features": [
+      "Landing page loads with proper branding and tier cards",
+      "Xaman authentication flow works correctly",
+      "Dashboard displays subscription status and navigation",
+      "Pair creation form works with demo address",
+      "Price alerts modal opens and accepts input",
+      "Chart timeframe buttons are functional",
+      "Subscribe page shows upgrade options",
+      "Alerts page navigation works",
+      "Logout functionality works (returns to landing page)"
+    ]
+  },
+  "passed_tests": [
+    "Backend health endpoint with XRP/USD price",
+    "All 3 subscription plans with correct structure",
+    "All 8 rank definitions (shrimp to humpback)",
+    "Public demo alert events",
+    "Xaman sign-in payload creation",
+    "Mock authentication with demo address",
+    "User info retrieval with subscription details",
+    "Subscription payment intent creation",
+    "Mock payment resolution and activation",
+    "AMM pair management (existing pairs)",
+    "Chart data retrieval (synthetic OHLCV)",
+    "Pair statistics with price data",
+    "Price alert creation and listing",
+    "Rank configuration management",
+    "OneSignal mock configuration",
+    "Test notification sending",
+    "Landing page rendering with all components",
+    "Xaman authentication modal and flow",
+    "Dashboard navigation and subscription display",
+    "Pair creation with demo address",
+    "Price alerts modal functionality",
+    "Chart timeframe switching",
+    "Subscribe page navigation",
+    "Logout functionality"
+  ],
+  "test_report_links": [
+    "/app/backend_test.py"
+  ],
+  "action_item_for_main_agent": "Fix critical modal overlay issue blocking navigation, resolve chart rendering problems (width/height = -1), and ensure address badge displays correctly. Also fix nested button HTML structure causing hydration errors.",
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  "success_percentage": "Backend: 95% (19/20 tests passed), Frontend: 75% (core functionality works but has UI issues)",
+  "should_call_test_agent_after_fix": "true",
+  "should_main_agent_test_itself": "false"
+}

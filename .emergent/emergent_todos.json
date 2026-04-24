@@ -1,10 +1,10 @@
 [
   {
-    "content": "Phase 1: Install backend dependencies (sqlalchemy, asyncpg, xrpl-py, etc.)",
+    "content": "Phase 1: Install backend dependencies",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Create /app/test_core.py with 5 POC checks (Postgres, XRPL AMM fetch, rank classification, mock Xaman, price fetch)",
+    "content": "Phase 1: Create /app/test_core.py with 5 POC checks",
     "status": "completed"
   },
   {
@@ -13,19 +13,19 @@
   },
   {
     "content": "Phase 2: Call design_agent for phoenix/fire theme guidelines",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Backend implementation (models, database, services, routers, worker, server.py)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: Frontend implementation (all pages + components matching screenshots)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 2: All 12 user stories covered end-to-end",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 3: End-to-end testing via testing_agent_v3",
