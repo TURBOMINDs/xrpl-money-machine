@@ -89,13 +89,13 @@ export function CandlestickChart({ pairId }) {
         </Tabs>
       </div>
 
-      <div className="h-[280px] sm:h-[320px]">
+      <div className="w-full h-[280px] sm:h-[320px]" style={{ minHeight: 280, minWidth: 200 }}>
         {loading ? (
           <div className="h-full grid place-items-center text-muted-foreground text-sm">Loading chart…</div>
         ) : prepared.length === 0 ? (
           <div className="h-full grid place-items-center text-muted-foreground text-sm">No data yet</div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={220}>
             <ComposedChart data={prepared} margin={{ top: 6, right: 12, bottom: 0, left: 12 }}>
               <defs>
                 <linearGradient id="volFill" x1="0" x2="0" y1="0" y2="1">

@@ -17,7 +17,7 @@ const TYPES = [
   { id: 'pct_change', label: '% change exceeds' },
 ];
 
-export function PriceAlertsModal({ pairId, triggerAsChild, children }) {
+export function PriceAlertsModal({ pairId, children }) {
   const [open, setOpen] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [events, setEvents] = useState([]);
@@ -119,7 +119,7 @@ export function PriceAlertsModal({ pairId, triggerAsChild, children }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild={triggerAsChild || !children}>{Trigger}</DialogTrigger>
+      <DialogTrigger asChild>{Trigger}</DialogTrigger>
       <DialogContent
         data-testid="price-alerts-modal"
         className="sm:max-w-lg border-white/10 neon-magenta rounded-2xl"

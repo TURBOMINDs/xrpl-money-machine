@@ -22,7 +22,7 @@ export function TopNav() {
       }`}
     >
       <Icon className="h-4 w-4" />
-      <span className="hidden md:inline">{label}</span>
+      <span className="inline">{label}</span>
     </Link>
   );
 
@@ -61,7 +61,7 @@ export function TopNav() {
                   {me.subscription.tier} · {me.subscription.status}
                 </Badge>
               )}
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10" data-testid="nav-user-address-container">
                 <Flame className="h-3.5 w-3.5 text-[hsl(var(--phoenix-orange))]" />
                 <span className="font-mono text-xs text-white/80" data-testid="nav-user-addr">
                   {shortAddr(user.xrpl_address)}

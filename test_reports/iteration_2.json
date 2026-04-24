@@ -1,0 +1,110 @@
+{
+  "summary": "Completed comprehensive re-testing of XRPL Universal Money Machine after critical fixes - all previously flagged bugs have been resolved successfully. Backend APIs 95% successful, frontend core functionality working excellently with all critical fixes verified.",
+  "backend_issues": {
+    "minor_bugs": [
+      {
+        "endpoint": "/api/subscriptions/start-trial",
+        "issue": "Returns 400 'subscription already active' when user already has subscription",
+        "impact": "Expected behavior - prevents duplicate trials",
+        "fix_priority": "LOW"
+      }
+    ],
+    "working_endpoints": [
+      "/api/health - returns XRP/USD price correctly",
+      "/api/subscriptions/plans - returns 3 tiers with proper structure", 
+      "/api/ranks/definitions - returns all 8 rank definitions",
+      "/api/alerts/events - returns public demo events",
+      "/api/auth/xaman/signin - creates payment payloads",
+      "/api/auth/xaman/mock-resolve - authenticates users correctly",
+      "/api/me - returns user info with subscription and slots",
+      "/api/subscriptions/subscribe - creates payment intents",
+      "/api/subscriptions/mock-resolve/{intent_id} - activates subscriptions",
+      "/api/amm/pairs - CRUD operations work",
+      "/api/amm/pairs/{id}/chart - returns synthetic OHLCV data",
+      "/api/amm/pairs/{id}/stats - returns pair statistics",
+      "/api/alerts - creates and lists price alerts",
+      "/api/ranks/config - manages rank preferences",
+      "/api/notifications/onesignal/config - returns mock config",
+      "/api/notifications/test - sends mock notifications"
+    ]
+  },
+  "frontend_issues": {
+    "resolved_critical_bugs": [
+      {
+        "component": "PriceAlertsModal",
+        "issue": "FIXED - Modal overlay no longer blocks navigation after closing",
+        "verification": "Successfully tested modal open/close and navigation to Alerts page",
+        "fix_status": "VERIFIED"
+      }
+    ],
+    "resolved_high_bugs": [
+      {
+        "component": "CandlestickChart", 
+        "issue": "FIXED - Chart rendering with proper width/height dimensions",
+        "verification": "Found 455 chart elements rendering correctly with all 5 timeframe tabs working",
+        "fix_status": "VERIFIED"
+      }
+    ],
+    "resolved_medium_bugs": [
+      {
+        "component": "TopNav",
+        "issue": "FIXED - Address badge now always visible showing shortened XRPL address",
+        "verification": "Address badge shows 'rPEPPE…6GDY' and all nav labels visible at all breakpoints",
+        "fix_status": "VERIFIED"
+      }
+    ],
+    "working_features": [
+      "Landing page loads with proper branding, hero section, and 3 tier cards",
+      "Live alerts panel displays correctly with real-time updates",
+      "Xaman authentication flow works correctly with mock resolve",
+      "Dashboard displays subscription status (PLUS · ACTIVE) and navigation",
+      "Pair creation form works with demo address population",
+      "Price alerts modal opens, accepts input, and closes without blocking navigation",
+      "Chart renders with candles, volume bars, and responsive timeframe switching",
+      "Subscribe page shows upgrade options with payment modal simulation",
+      "Alerts page navigation works correctly",
+      "Settings page accessible with account and notification sections",
+      "Logout functionality works (returns to landing page)",
+      "Session management works as expected (redirects when not authenticated)"
+    ]
+  },
+  "passed_tests": [
+    "Backend health endpoint with XRP/USD price (1.42835)",
+    "All 3 subscription plans with correct pricing and slots",
+    "All 8 rank definitions (shrimp to humpback)",
+    "Public demo alert events (5 events found)",
+    "Xaman sign-in payload creation and mock resolution",
+    "User authentication with demo address rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY",
+    "User info retrieval with PLUS subscription and 15 slots",
+    "Subscription payment intent creation and mock resolution",
+    "AMM pair management with existing XRP/OMN3 pair",
+    "Chart data retrieval with synthetic OHLCV points",
+    "Pair statistics with reserve data",
+    "Price alert creation and listing (4 user alerts found)",
+    "Rank configuration management (8 rank configs)",
+    "OneSignal mock configuration and test notifications",
+    "Landing page rendering with hero, tier cards, and live alerts",
+    "Xaman authentication modal with QR code and simulate button",
+    "Dashboard navigation and subscription display",
+    "TopNav address badge visibility and formatting",
+    "Navigation labels visibility at all breakpoints",
+    "CandlestickChart container with proper dimensions",
+    "Chart timeframe tabs (1D, 7D, 30D, 90D, 1Y) functionality",
+    "PriceAlertsModal DialogTrigger asChild=true fix",
+    "Modal close and navigation without overlay blocking",
+    "Alerts page navigation and functionality",
+    "Subscribe page with tier cards and upgrade buttons",
+    "Settings page accessibility",
+    "Logout functionality returning to landing page"
+  ],
+  "test_report_links": [
+    "/app/backend_test.py"
+  ],
+  "action_item_for_main_agent": "",
+  "updated_files": [
+    "/app/backend_test.py"
+  ],
+  "success_percentage": "Backend: 95% (19/20 tests passed), Frontend: 100% (all critical fixes verified and working)",
+  "should_call_test_agent_after_fix": "false",
+  "should_main_agent_test_itself": "true"
+}
