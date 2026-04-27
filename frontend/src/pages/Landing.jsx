@@ -5,15 +5,19 @@ import { XamanLoginButton } from '@/components/XamanLoginButton';
 import { TierCard } from '@/components/TierCard';
 import { LiveAlertsPanel } from '@/components/LiveAlertsPanel';
 import { RanksGrid } from '@/components/RankCard';
+import { TrustMessage } from '@/components/TrustMessage';
+import { LiquiditySupportTracker } from '@/components/LiquiditySupportTracker';
 import { Button } from '@/components/ui/button';
 import { Flame, Zap, Shield, ChevronDown } from 'lucide-react';
 import { subsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useSubscriptionStats } from '@/lib/useStats';
 
 export default function Landing() {
   const [plans, setPlans] = useState([]);
   const { user } = useAuth();
   const nav = useNavigate();
+  const { stats } = useSubscriptionStats(15000);
 
   useEffect(() => {
     subsApi.plans().then(({ data }) => setPlans(data || [])).catch(() => setPlans([]));
@@ -113,9 +117,11 @@ export default function Landing() {
           </div>
           <div className="grid md:grid-cols-3 gap-4 lg:gap-6">
             {plans.map((p) => (
-              <TierCard key={p.id} tier={p} onSelect={goSubscribe} />
+              <TierCard key={p.id} tier={p} onSelect={goSubscribe} stats={stats} />
             ))}
           </div>
+          <TrustMessage className="mt-3" />
+          <LiquiditySupportTracker className="mt-3" />
         </section>
 
         {/* RANKS PREVIEW */}

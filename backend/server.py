@@ -11,12 +11,13 @@ from sqlalchemy import select
 
 from config import settings
 from database import SessionLocal, init_db
-from models import AlertEvent
+from models import AlertEvent, SupportAction
 from routers.alerts_router import router as alerts_router
 from routers.amm_router import router as amm_router
 from routers.auth_router import router as auth_router
 from routers.notifications_router import router as notifications_router
 from routers.ranks_router import router as ranks_router
+from routers.stats_router import router as stats_router
 from routers.subscription_router import router as subscription_router
 from services.price_service import get_xrp_usd
 from services.worker import worker_loop
@@ -60,6 +61,20 @@ async def lifespan(app: FastAPI):
                 ))
             await db.commit()
             log.info('Seeded public demo alert events.')
+        # seed initial support action so Liquidity Support Tracker has data
+        from sqlalchemy import select as _select
+        sa_res = await db.execute(_select(SupportAction).limit(1))
+        if not sa_res.scalar_one_or_none():
+            import uuid
+            db.add(SupportAction(
+                id=str(uuid.uuid4()),
+                amount_xrp=125.0,
+                action_type='liquidity_add',
+                note='Initial weekly XEMA AMM liquidity injection',
+                created_at=datetime.now(timezone.utc),
+            ))
+            await db.commit()
+            log.info('Seeded initial support action.')
     # start background worker
     task = asyncio.create_task(worker_loop(interval_seconds=30))
     yield
@@ -114,5 +129,6 @@ api.include_router(amm_router)
 api.include_router(alerts_router)
 api.include_router(ranks_router)
 api.include_router(notifications_router)
+api.include_router(stats_router)
 
 app.include_router(api)

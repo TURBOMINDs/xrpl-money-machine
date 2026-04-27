@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { TopNav } from '@/components/TopNav';
 import { TierCard } from '@/components/TierCard';
 import { SubscribePaymentModal } from '@/components/SubscribePaymentModal';
+import { LiquiditySupportTracker } from '@/components/LiquiditySupportTracker';
+import { TrustMessage } from '@/components/TrustMessage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Flame } from 'lucide-react';
 import { toast } from 'sonner';
 import { subsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useSubscriptionStats } from '@/lib/useStats';
 
 export default function Subscribe() {
   const [plans, setPlans] = useState([]);
@@ -18,6 +21,7 @@ export default function Subscribe() {
   const [open, setOpen] = useState(false);
   const { me, refresh } = useAuth();
   const nav = useNavigate();
+  const { stats } = useSubscriptionStats(15000);
 
   useEffect(() => {
     subsApi.plans().then(({ data }) => setPlans(data || [])).catch(() => {});
@@ -94,11 +98,15 @@ export default function Subscribe() {
               key={p.id}
               tier={p}
               loading={busy}
+              stats={stats}
               current={me?.subscription?.tier === p.id && ['trial', 'active'].includes(me?.subscription?.status || '')}
               onSelect={() => subscribe(p)}
             />
           ))}
         </div>
+
+        <TrustMessage />
+        <LiquiditySupportTracker />
       </main>
       <SubscribePaymentModal open={open} onOpenChange={setOpen} tier={tier} intent={intent} />
     </div>

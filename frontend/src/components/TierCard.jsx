@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Check, Crown, Flame, Sparkles } from 'lucide-react';
+import { Check, Crown, Flame, Sparkles, Users, Rocket } from 'lucide-react';
 import { formatUSD } from '@/lib/format';
+import { AnimatedCounter } from '@/components/AnimatedCounter';
 
 const themes = {
   basic: {
@@ -13,6 +14,10 @@ const themes = {
     ctaClass:
       'bg-white/[0.06] border border-[hsl(var(--electric-blue))]/40 text-white hover:bg-white/[0.09]',
     glow: 'from-[hsl(var(--electric-blue))]/5 to-transparent',
+    statIcon: Users,
+    statLabel: 'wallets joined',
+    statKey: 'basic_wallets',
+    statGlow: 'rgba(0, 212, 255, 0.55)',
   },
   plus: {
     border: 'neon-orange',
@@ -22,6 +27,10 @@ const themes = {
     ctaClass:
       'bg-[hsl(var(--phoenix-orange))] text-black hover:brightness-110 active:scale-[0.98]',
     glow: 'from-[hsl(var(--phoenix-orange))]/10 to-transparent',
+    statIcon: Flame,
+    statLabel: 'active traders',
+    statKey: 'plus_wallets',
+    statGlow: 'rgba(255, 107, 26, 0.6)',
   },
   ultimate: {
     border: 'neon-gold',
@@ -31,10 +40,14 @@ const themes = {
     ctaClass:
       'bg-[hsl(var(--ultimate-gold))] text-black hover:brightness-110 active:scale-[0.98]',
     glow: 'from-[hsl(var(--ultimate-gold))]/10 to-transparent',
+    statIcon: Rocket,
+    statLabel: 'elite trackers',
+    statKey: 'ultimate_wallets',
+    statGlow: 'rgba(255, 170, 0, 0.6)',
   },
 };
 
-export function TierCard({ tier, onSelect, current, loading }) {
+export function TierCard({ tier, onSelect, current, loading, stats }) {
   const t = themes[tier.id] || themes.basic;
   const Icon = t.icon;
   return (
@@ -92,6 +105,24 @@ export function TierCard({ tier, onSelect, current, loading }) {
         </Button>
         <div className="text-[11px] text-muted-foreground mt-2 text-center">
           {tier.amm_slots} AMM slots · {tier.swaps_per_24h} swaps / 24h
+        </div>
+        {/* Subscription stats badge */}
+        <div
+          data-testid="tier-card-stats-badge"
+          data-tier={tier.id}
+          className="mt-3 rounded-xl bg-black/40 border border-white/10 px-3 py-2.5 flex items-center justify-center gap-2"
+        >
+          <t.statIcon className={`h-4 w-4 ${t.accent}`} />
+          <AnimatedCounter
+            value={stats?.[t.statKey] ?? 0}
+            decimals={0}
+            className={`font-display text-xl font-bold ${t.accent}`}
+            glowColor={t.statGlow}
+            testId={`tier-card-stats-counter-${tier.id}`}
+          />
+          <span className="text-[11px] uppercase tracking-widest text-white/70 font-semibold">
+            {t.statLabel}
+          </span>
         </div>
       </div>
     </Card>

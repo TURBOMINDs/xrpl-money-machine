@@ -1,42 +1,34 @@
 [
   {
-    "content": "Phase 1: Install backend dependencies",
+    "content": "Backend: Add SupportAction model + Alembic-style table for last_support_action persistence",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Create /app/test_core.py with 5 POC checks",
+    "content": "Backend: Create /api/stats/subscriptions endpoint (public, no auth) with DISTINCT wallet counts + weekly XRP + next cycle + last action",
     "status": "completed"
   },
   {
-    "content": "Phase 1: Run POC, fix until all 5 checks pass",
+    "content": "Backend: Auto-seed sample support action so UI has data on first load",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Call design_agent for phoenix/fire theme guidelines",
+    "content": "Frontend: Add statsApi + AnimatedCounter component (count-up + glow on update)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Backend implementation (models, database, services, routers, worker, server.py)",
+    "content": "Frontend: TierCard footer wallet count badges (Basic=Users joined, Plus=Active traders, Ultimate=Elite trackers)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: Frontend implementation (all pages + components matching screenshots)",
+    "content": "Frontend: LiquiditySupportTracker module on Dashboard (weekly XRP + countdown + last action)",
     "status": "completed"
   },
   {
-    "content": "Phase 2: All 12 user stories covered end-to-end",
+    "content": "Frontend: Trust messaging banner below pricing cards on Landing + Subscribe",
     "status": "completed"
   },
   {
-    "content": "Phase 3: End-to-end testing via testing_agent_v3",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 3: Fix all bugs reported by testing agent",
-    "status": "completed"
-  },
-  {
-    "content": "Phase 4: Finish + deliverables summary",
+    "content": "Test end-to-end via testing_agent_v3",
     "status": "in_progress"
   }
 ]

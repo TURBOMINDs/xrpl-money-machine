@@ -8,6 +8,8 @@ import { RanksGrid } from '@/components/RankCard';
 import { PriceAlertsModal } from '@/components/PriceAlertsModal';
 import { TierCard } from '@/components/TierCard';
 import { SubscribePaymentModal } from '@/components/SubscribePaymentModal';
+import { LiquiditySupportTracker } from '@/components/LiquiditySupportTracker';
+import { TrustMessage } from '@/components/TrustMessage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +17,7 @@ import { toast } from 'sonner';
 import { Flame, Play, Pause, Trash2, BarChart3, Gauge } from 'lucide-react';
 import { ammApi, subsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useSubscriptionStats } from '@/lib/useStats';
 import { formatXRP, formatUSD, shortAddr } from '@/lib/format';
 
 export default function Dashboard() {
@@ -27,6 +30,7 @@ export default function Dashboard() {
   const [payOpen, setPayOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const nav = useNavigate();
+  const { stats } = useSubscriptionStats(15000);
 
   const loadPairs = async () => {
     const { data } = await ammApi.list();
@@ -253,11 +257,15 @@ export default function Dashboard() {
             <h3 className="font-display text-lg sm:text-xl">Unlock more slots</h3>
             <div className="grid md:grid-cols-3 gap-4">
               {plans.map((p) => (
-                <TierCard key={p.id} tier={p} onSelect={() => subscribe(p)} />
+                <TierCard key={p.id} tier={p} onSelect={() => subscribe(p)} stats={stats} />
               ))}
             </div>
+            <TrustMessage className="mt-3" />
           </section>
         )}
+
+        {/* Liquidity Support Tracker (shown to all logged-in users) */}
+        <LiquiditySupportTracker />
       </main>
 
       <SubscribePaymentModal

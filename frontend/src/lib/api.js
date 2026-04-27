@@ -70,4 +70,9 @@ export const notifApi = {
   log: () => api.get('/notifications/log'),
 };
 
+export const statsApi = {
+  subscriptions: () => api.get('/stats/subscriptions'),
+  supportHistory: (limit = 10) => api.get('/stats/support-history', { params: { limit } }),
+};
+
 export default api;

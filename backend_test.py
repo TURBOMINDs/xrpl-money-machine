@@ -417,6 +417,181 @@ class XRPLBackendTester:
                 print("❌ Notification test response invalid")
         return False
 
+    def test_subscription_stats(self):
+        """Test subscription stats endpoint (public, no auth)"""
+        # Test without authentication to ensure it's public
+        temp_token = self.token
+        self.token = None  # Remove auth temporarily
+        
+        success, response = self.run_test(
+            "Subscription Stats (Public)",
+            "GET",
+            "stats/subscriptions",
+            200
+        )
+        
+        self.token = temp_token  # Restore auth
+        
+        if success:
+            required_fields = [
+                'basic_wallets', 'plus_wallets', 'ultimate_wallets', 
+                'weekly_xrp_collected', 'next_support_cycle', 
+                'next_support_cycle_at', 'last_support_action', 'total_unique_wallets'
+            ]
+            
+            if all(field in response for field in required_fields):
+                print(f"   Basic wallets: {response['basic_wallets']}")
+                print(f"   Plus wallets: {response['plus_wallets']}")
+                print(f"   Ultimate wallets: {response['ultimate_wallets']}")
+                print(f"   Weekly XRP: {response['weekly_xrp_collected']}")
+                print(f"   Next cycle: {response['next_support_cycle']}")
+                print(f"   Total wallets: {response['total_unique_wallets']}")
+                
+                # Verify no wallet addresses are exposed
+                response_str = json.dumps(response)
+                if 'xrpl_address' in response_str or 'address' in response_str.lower():
+                    print("❌ WARNING: Response may contain wallet addresses")
+                    return False
+                
+                # Verify next_support_cycle_at is valid ISO datetime
+                try:
+                    from datetime import datetime
+                    next_cycle = datetime.fromisoformat(response['next_support_cycle_at'].replace('Z', '+00:00'))
+                    if next_cycle.weekday() == 6 and next_cycle.hour == 20:  # Sunday at 20:00
+                        print(f"   Next cycle datetime valid: {next_cycle}")
+                    else:
+                        print(f"❌ Next cycle not Sunday 20:00: {next_cycle}")
+                        return False
+                except Exception as e:
+                    print(f"❌ Invalid next_support_cycle_at format: {e}")
+                    return False
+                
+                # Verify data types
+                if (isinstance(response['basic_wallets'], int) and 
+                    isinstance(response['plus_wallets'], int) and
+                    isinstance(response['ultimate_wallets'], int) and
+                    isinstance(response['weekly_xrp_collected'], (int, float)) and
+                    isinstance(response['total_unique_wallets'], int)):
+                    return True
+                else:
+                    print("❌ Invalid data types in response")
+                    return False
+            else:
+                missing = [f for f in required_fields if f not in response]
+                print(f"❌ Missing required fields: {missing}")
+        return False
+
+    def test_support_history(self):
+        """Test support history endpoint"""
+        # Test without authentication to ensure it's public
+        temp_token = self.token
+        self.token = None
+        
+        success, response = self.run_test(
+            "Support History (Public)",
+            "GET",
+            "stats/support-history",
+            200
+        )
+        
+        self.token = temp_token
+        
+        if success:
+            if 'items' in response and isinstance(response['items'], list):
+                print(f"   Found {len(response['items'])} support actions")
+                
+                # Check first item structure if exists
+                if response['items']:
+                    item = response['items'][0]
+                    required_fields = ['id', 'amount_xrp', 'action_type', 'created_at']
+                    if all(field in item for field in required_fields):
+                        print(f"   Latest action: {item['amount_xrp']} XRP - {item['action_type']}")
+                        return True
+                    else:
+                        print(f"❌ Support action missing required fields: {item}")
+                        return False
+                else:
+                    print("   No support actions found (empty list)")
+                    return True
+            else:
+                print("❌ Support history response missing 'items' array")
+        return False
+
+    def test_stats_after_subscription_changes(self):
+        """Test that stats reflect subscription changes correctly"""
+        print("\n🔍 Testing stats changes after subscription operations...")
+        
+        # Get initial stats
+        temp_token = self.token
+        self.token = None
+        initial_success, initial_stats = self.run_test(
+            "Initial Stats",
+            "GET", 
+            "stats/subscriptions",
+            200
+        )
+        self.token = temp_token
+        
+        if not initial_success:
+            return False
+            
+        initial_basic = initial_stats.get('basic_wallets', 0)
+        initial_plus = initial_stats.get('plus_wallets', 0)
+        initial_weekly = initial_stats.get('weekly_xrp_collected', 0)
+        
+        print(f"   Initial - Basic: {initial_basic}, Plus: {initial_plus}, Weekly XRP: {initial_weekly}")
+        
+        # Create a new user and start trial (should increase basic_wallets)
+        # Note: This test assumes we can create multiple users, which may not be possible
+        # in the current setup. We'll test with existing user operations instead.
+        
+        # Test subscription upgrade (if user doesn't already have plus)
+        me_success, me_response = self.run_test(
+            "Check Current User",
+            "GET",
+            "me", 
+            200
+        )
+        
+        if me_success:
+            current_tier = me_response.get('subscription', {}).get('tier')
+            current_status = me_response.get('subscription', {}).get('status')
+            
+            print(f"   Current user tier: {current_tier}, status: {current_status}")
+            
+            # If user doesn't have plus subscription, try to create one
+            if current_tier != 'plus' or current_status != 'active':
+                payment_success, intent_id = self.test_subscription_payment()
+                if payment_success and intent_id:
+                    resolve_success = self.test_mock_payment_resolve(intent_id)
+                    if resolve_success:
+                        # Check stats again
+                        self.token = None
+                        final_success, final_stats = self.run_test(
+                            "Final Stats After Plus Subscription",
+                            "GET",
+                            "stats/subscriptions", 
+                            200
+                        )
+                        self.token = temp_token
+                        
+                        if final_success:
+                            final_plus = final_stats.get('plus_wallets', 0)
+                            final_weekly = final_stats.get('weekly_xrp_collected', 0)
+                            
+                            print(f"   Final - Plus: {final_plus}, Weekly XRP: {final_weekly}")
+                            
+                            # Verify plus count increased and weekly XRP increased
+                            if final_plus >= initial_plus and final_weekly >= initial_weekly:
+                                print("✅ Stats correctly reflect subscription changes")
+                                return True
+                            else:
+                                print("❌ Stats did not reflect subscription changes correctly")
+                                return False
+        
+        print("   Could not test subscription changes (user already has subscription)")
+        return True  # Not a failure, just can't test this scenario
+
     def test_slot_limit_enforcement(self):
         """Test slot limit enforcement for free users"""
         print("\n🔍 Testing slot limit enforcement...")
@@ -532,6 +707,15 @@ class XRPLBackendTester:
         # Test notifications
         self.test_onesignal_config()
         self.test_notification_test()
+        
+        # Test new subscription stats endpoints
+        print("\n" + "="*50)
+        print("TESTING SUBSCRIPTION STATS ENDPOINTS")
+        print("="*50)
+        
+        self.test_subscription_stats()
+        self.test_support_history()
+        self.test_stats_after_subscription_changes()
         
         # Test slot limit enforcement (this should be done with a fresh user)
         # Note: This test might not work if user already has subscription

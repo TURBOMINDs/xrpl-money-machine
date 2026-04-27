@@ -157,3 +157,15 @@ class OneSignalDevice(Base):
     created_at = Column(DateTime(timezone=True), default=_now)
 
     user = relationship('User', back_populates='devices')
+
+
+
+class SupportAction(Base):
+    """Records platform-funded liquidity / market-support actions for the XEMA ecosystem."""
+    __tablename__ = 'support_actions'
+    id = Column(String, primary_key=True, default=_uuid)
+    amount_xrp = Column(Float, nullable=False)
+    action_type = Column(String, default='liquidity_add')  # liquidity_add | buyback | distribution
+    tx_hash = Column(String, nullable=True)
+    note = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_now, index=True)
