@@ -1,46 +1,34 @@
 [
   {
-    "content": "Update backend .env: community wallet, allocation %, dry-run flag, treasury seed placeholder",
+    "content": "Step 1: Re-run /api/liquidity/run-now?force=true (clean test)",
     "status": "completed"
   },
   {
-    "content": "Add new models: PriceSnapshot, LiquidityExecution, PairTransaction",
+    "content": "Add convenience fields (executed, allocation object) to liquidity execution response",
     "status": "completed"
   },
   {
-    "content": "Build services/liquidity_engine.py",
+    "content": "Add real Xaman API keys to .env (430cc70f / 4d3d696e)",
     "status": "completed"
   },
   {
-    "content": "Build services/whale_detector.py",
+    "content": "Update XamanService real path to use proper request signing per Xaman API spec",
     "status": "completed"
   },
   {
-    "content": "Build services/ohlc_engine.py",
+    "content": "Build /api/auth/xaman/webhook endpoint with HMAC signature verification",
     "status": "completed"
   },
   {
-    "content": "Update worker.py + APScheduler in server.py for Sunday cron",
+    "content": "Step 3: Verify DB write to liquidity_executions + support_actions",
     "status": "completed"
   },
   {
-    "content": "Update /api/stats/subscriptions allocation. Add /api/liquidity/* endpoints",
+    "content": "Step 4: Verify UI updates (Last Support Action, counters, allocation bar)",
     "status": "completed"
   },
   {
-    "content": "Update /api/amm/pairs/{id}/chart to use real OHLC",
-    "status": "completed"
-  },
-  {
-    "content": "Frontend: allocation breakdown + dry-run + community wallet in LiquiditySupportTracker",
-    "status": "completed"
-  },
-  {
-    "content": "Frontend: LiquidityExecutionLog component",
-    "status": "completed"
-  },
-  {
-    "content": "End-to-end test via testing_agent_v3",
-    "status": "completed"
+    "content": "Test end-to-end via testing_agent_v3",
+    "status": "in_progress"
   }
 ]

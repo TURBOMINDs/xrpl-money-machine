@@ -188,6 +188,8 @@ async def execute_cycle(force: bool = False, override_amount: Optional[float] = 
 
 
 def _to_dict(e: LiquidityExecution) -> Dict:
+    status = e.status
+    executed = status in ('success', 'dry_run')
     return {
         'id': e.id,
         'cycle_start': e.cycle_start.isoformat() if e.cycle_start else None,
@@ -200,10 +202,18 @@ def _to_dict(e: LiquidityExecution) -> Dict:
         'dest_amm_address': e.dest_amm_address,
         'treasury_account': e.treasury_account,
         'tx_hash': e.tx_hash,
-        'status': e.status,
+        'status': status,
         'dry_run': bool(e.dry_run),
         'error': e.error,
         'log': e.log,
         'created_at': e.created_at.isoformat() if e.created_at else None,
         'completed_at': e.completed_at.isoformat() if e.completed_at else None,
+        # Convenience shape requested by ops/UI
+        'executed': executed,
+        'allocation': {
+            'xema': float(e.allocated_xema_xrp or 0),
+            'ops': float(e.allocated_ops_xrp or 0),
+            'xema_pct': float(e.allocation_xema_pct or 0),
+            'ops_pct': float(e.allocation_ops_pct or 0),
+        },
     }

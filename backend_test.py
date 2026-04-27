@@ -2,10 +2,15 @@
 """
 XRPL Universal Money Machine - Backend API Testing
 Tests all endpoints mentioned in the requirements with proper authentication flow.
+Updated for iteration 5: Real Xaman API, webhook verification, convenience fields
 """
 import requests
 import sys
 import json
+import hashlib
+import hmac
+import time
+import uuid
 from datetime import datetime
 
 class XRPLBackendTester:
@@ -18,6 +23,8 @@ class XRPLBackendTester:
         self.failed_tests = []
         self.demo_address = "rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY"
         self.demo_amm_address = "rHUpaqUPbwzKZdzQ8ZQCme18FrgW9pB4am"
+        self.xaman_secret = "4d3d696e-aca5-43ef-8372-d97b00bc7544"
+        self.subscription_dest = "rJkpUojYKYArCRkrdDhaSMZzTw77r1UiMC"
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
@@ -852,6 +859,249 @@ class XRPLBackendTester:
         print(f"❌ Slot limit not enforced - created {len(pair_ids)} pairs")
         return False
 
+    def test_xaman_config_real_mode(self):
+        """Test GET /api/auth/xaman/config returns real mode configuration"""
+        success, response = self.run_test(
+            "Xaman Config (Real Mode)",
+            "GET",
+            "auth/xaman/config",
+            200
+        )
+        if success:
+            expected = {
+                'mock_mode': False,
+                'webhook_verify_enabled': True,
+                'has_real_keys': True
+            }
+            for key, expected_val in expected.items():
+                if response.get(key) != expected_val:
+                    print(f"❌ Config {key}: expected {expected_val}, got {response.get(key)}")
+                    return False
+            print("   ✅ Real Xaman keys configured, mock_mode=false, webhook verification enabled")
+            return True
+        return False
+
+    def test_xaman_signin_real_api(self):
+        """Test POST /api/auth/xaman/signin hits real Xaman API"""
+        success, response = self.run_test(
+            "Xaman Sign-in (Real API)",
+            "POST",
+            "auth/xaman/signin",
+            200,
+            data={}
+        )
+        if success:
+            # Verify it's a real UUID v4
+            try:
+                uuid.UUID(response['payload_uuid'], version=4)
+            except ValueError:
+                print(f"❌ Invalid payload UUID: {response['payload_uuid']}")
+                return False
+            
+            # Verify QR URL is real (contains xumm.app/sign or is PNG URL)
+            qr_url = response['qr_url']
+            if not ('xumm.app/sign' in qr_url or qr_url.endswith('.png')):
+                print(f"❌ QR URL doesn't look real: {qr_url}")
+                return False
+                
+            print(f"   ✅ Real Xaman payload created: {response['payload_uuid']}")
+            print(f"   QR URL: {qr_url}")
+            return True, response['payload_uuid']
+        return False, None
+
+    def test_webhook_valid_signature(self):
+        """Test POST /api/auth/xaman/webhook with VALID HMAC-SHA256 signature"""
+        payload_uuid = str(uuid.uuid4())
+        timestamp = str(int(time.time()))
+        
+        # Create webhook body
+        body = {
+            'payload_uuidv4': payload_uuid,
+            'signed': True,
+            'payloadResponse': {
+                'txid': f'TESTTX{uuid.uuid4().hex[:24].upper()}',
+                'account': self.demo_address,
+                'signed': True,
+                'dispatched_nodetype': 'MAINNET'
+            },
+            'customMeta': {},
+        }
+        
+        body_json = json.dumps(body)
+        body_bytes = body_json.encode('utf-8')
+        
+        # Compute HMAC-SHA256 signature
+        message = timestamp.encode() + body_bytes
+        signature = hmac.new(
+            self.xaman_secret.encode('utf-8'),
+            message,
+            hashlib.sha256
+        ).hexdigest()
+        
+        headers = {
+            'X-Timestamp': timestamp,
+            'X-Signature': signature
+        }
+        
+        success, response = self.run_test(
+            "Webhook Valid HMAC-SHA256",
+            "POST",
+            "auth/xaman/webhook",
+            200,
+            data=body,
+            headers=headers
+        )
+        
+        if success:
+            expected_fields = ['status', 'verified', 'payload_uuid', 'tx_hash']
+            if all(field in response for field in expected_fields):
+                if response['status'] == 'processed' and response['verified']:
+                    print(f"   ✅ Webhook processed with valid signature")
+                    return True
+                else:
+                    print(f"❌ Webhook status/verified incorrect: {response}")
+            else:
+                print(f"❌ Webhook response missing fields: {response}")
+        return False
+
+    def test_webhook_invalid_signature(self):
+        """Test POST /api/auth/xaman/webhook with INVALID signature returns 401"""
+        body = {
+            'payload_uuidv4': str(uuid.uuid4()),
+            'signed': True,
+            'payloadResponse': {'txid': 'test', 'account': self.demo_address}
+        }
+        
+        headers = {
+            'X-Timestamp': str(int(time.time())),
+            'X-Signature': 'invalid_signature_12345'
+        }
+        
+        success, response = self.run_test(
+            "Webhook Invalid Signature",
+            "POST",
+            "auth/xaman/webhook",
+            401,
+            data=body,
+            headers=headers
+        )
+        
+        if success:
+            if 'invalid_signature' in response.get('detail', ''):
+                print("   ✅ Invalid signature correctly rejected")
+                return True
+            else:
+                print(f"❌ Wrong error message: {response}")
+        return False
+
+    def test_webhook_no_signature(self):
+        """Test POST /api/auth/xaman/webhook with NO signature header returns 401"""
+        body = {
+            'payload_uuidv4': str(uuid.uuid4()),
+            'signed': True,
+            'payloadResponse': {'txid': 'test', 'account': self.demo_address}
+        }
+        
+        success, response = self.run_test(
+            "Webhook No Signature",
+            "POST",
+            "auth/xaman/webhook",
+            401,
+            data=body
+        )
+        
+        if success:
+            print("   ✅ Missing signature correctly rejected")
+            return True
+        return False
+
+    def test_webhook_test_endpoint(self):
+        """Test POST /api/auth/xaman/webhook/test bypasses signature check"""
+        payload_uuid = str(uuid.uuid4())
+        
+        url = f"{self.base_url}/api/auth/xaman/webhook/test?payload_uuid={payload_uuid}&address={self.demo_address}"
+        
+        try:
+            response = requests.post(url, timeout=10)
+            self.tests_run += 1
+            print(f"\n🔍 Testing Webhook Test Endpoint...")
+            print(f"   URL: {url}")
+            
+            if response.status_code == 200:
+                self.tests_passed += 1
+                data = response.json()
+                if data.get('status') == 'processed' and data.get('verified'):
+                    print("✅ Passed - Webhook test endpoint works (bypasses signature check)")
+                    return True
+                else:
+                    print(f"❌ Wrong response: {data}")
+            else:
+                print(f"❌ Failed - Status: {response.status_code}")
+        except Exception as e:
+            print(f"❌ Error: {e}")
+        
+        return False
+
+    def test_liquidity_convenience_fields(self):
+        """Test POST /api/liquidity/run-now returns new convenience fields"""
+        success, response = self.run_test(
+            "Liquidity Run-Now (Convenience Fields)",
+            "POST",
+            "liquidity/run-now?force=true",
+            200
+        )
+        
+        if success:
+            # Check for new convenience fields
+            required_fields = ['executed', 'allocation']
+            missing_fields = [f for f in required_fields if f not in response]
+            if missing_fields:
+                print(f"❌ Missing convenience fields: {missing_fields}")
+                return False
+            
+            # Check allocation structure
+            allocation = response['allocation']
+            allocation_fields = ['xema', 'ops', 'xema_pct', 'ops_pct']
+            missing_allocation = [f for f in allocation_fields if f not in allocation]
+            if missing_allocation:
+                print(f"❌ Missing allocation fields: {missing_allocation}")
+                return False
+            
+            # Verify percentages
+            if allocation['xema_pct'] != 65 or allocation['ops_pct'] != 35:
+                print(f"❌ Wrong allocation percentages: {allocation['xema_pct']}/{allocation['ops_pct']}")
+                return False
+            
+            # Check executed field logic
+            status = response.get('status')
+            expected_executed = status in ('success', 'dry_run')
+            if response['executed'] != expected_executed:
+                print(f"❌ Wrong executed field: {response['executed']} for status {status}")
+                return False
+            
+            print(f"   ✅ Convenience fields present: executed={response['executed']}")
+            print(f"   Allocation: {allocation['xema']} XEMA ({allocation['xema_pct']}%), {allocation['ops']} OPS ({allocation['ops_pct']}%)")
+            return True
+        return False
+
+    def test_subscription_dest_address(self):
+        """Test subscription destination address is correct"""
+        success, response = self.run_test(
+            "Liquidity Status (Dest Address)",
+            "GET",
+            "liquidity/status",
+            200
+        )
+        
+        if success:
+            community_wallet = response.get('community_wallet')
+            if community_wallet == self.subscription_dest:
+                print(f"   ✅ Community wallet correct: {self.subscription_dest}")
+                return True
+            else:
+                print(f"❌ Wrong community wallet: {community_wallet}, expected: {self.subscription_dest}")
+        return False
+
     def run_all_tests(self):
         """Run all backend tests in sequence"""
         print("🚀 Starting XRPL Universal Money Machine Backend Tests")
@@ -867,7 +1117,25 @@ class XRPLBackendTester:
         self.test_rank_definitions()
         self.test_public_alerts()
         
-        # Test authentication flow
+        # Test NEW: Real Xaman configuration
+        print("\n" + "="*50)
+        print("TESTING REAL XAMAN INTEGRATION")
+        print("="*50)
+        
+        self.test_xaman_config_real_mode()
+        real_signin_success, real_payload_uuid = self.test_xaman_signin_real_api()
+        
+        # Test webhook endpoints
+        print("\n" + "="*50)
+        print("TESTING WEBHOOK VERIFICATION")
+        print("="*50)
+        
+        self.test_webhook_valid_signature()
+        self.test_webhook_invalid_signature()
+        self.test_webhook_no_signature()
+        self.test_webhook_test_endpoint()
+        
+        # Test authentication flow (using mock-resolve dev backdoor)
         print("\n" + "="*50)
         print("TESTING AUTHENTICATION")
         print("="*50)
@@ -940,7 +1208,9 @@ class XRPLBackendTester:
         print("="*50)
         
         self.test_liquidity_status()
+        self.test_subscription_dest_address()
         execution_success, execution_id = self.test_liquidity_run_now()
+        self.test_liquidity_convenience_fields()
         if execution_success:
             self.test_liquidity_executions()
         

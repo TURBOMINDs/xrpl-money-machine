@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Flame, Wallet, Copy, Check, AlertCircle } from 'lucide-react';
+import { Flame, Wallet, Copy, Check, AlertCircle, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { authApi } from '@/lib/api';
+import { authApi, notifApi } from '@/lib/api';
+import api from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useNavigate } from 'react-router-dom';
 import { DEMO_ADDRESSES } from '@/lib/format';
@@ -15,8 +16,15 @@ export function XamanLoginButton({ triggerProps = {}, onSuccess }) {
   const [busy, setBusy] = useState(false);
   const [addr, setAddr] = useState(DEMO_ADDRESSES[0]);
   const [copied, setCopied] = useState(false);
+  const [xamanCfg, setXamanCfg] = useState({ mock_mode: true, has_real_keys: false });
   const { setToken, refresh } = useAuth();
   const nav = useNavigate();
+
+  useEffect(() => {
+    if (open) {
+      api.get('/auth/xaman/config').then(({ data }) => setXamanCfg(data)).catch(() => {});
+    }
+  }, [open]);
 
   const begin = async () => {
     setBusy(true);
@@ -123,10 +131,19 @@ export function XamanLoginButton({ triggerProps = {}, onSuccess }) {
 
             <div className="rounded-xl border border-dashed border-[hsl(var(--phoenix-orange))]/30 bg-[hsl(var(--phoenix-orange))]/5 p-4">
               <div className="flex items-start gap-2 text-xs text-white/80">
-                <AlertCircle className="h-4 w-4 text-[hsl(var(--phoenix-orange))] shrink-0 mt-0.5" />
+                {xamanCfg.mock_mode ? (
+                  <AlertCircle className="h-4 w-4 text-[hsl(var(--phoenix-orange))] shrink-0 mt-0.5" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                )}
                 <div>
-                  <div className="font-semibold text-[hsl(var(--phoenix-orange))]">Mock mode active</div>
-                  Provide any valid XRPL address (starts with <span className="font-mono">r…</span>) to simulate a signed payload.
+                  <div className={`font-semibold ${xamanCfg.mock_mode ? 'text-[hsl(var(--phoenix-orange))]' : 'text-emerald-400'}`}>
+                    {xamanCfg.mock_mode ? 'Mock mode active' : 'Live Xaman ' + (xamanCfg.has_real_keys ? '— real keys connected' : '')}
+                  </div>
+                  {xamanCfg.mock_mode
+                    ? <>Provide any valid XRPL address (starts with <span className="font-mono">r…</span>) to simulate a signed payload.</>
+                    : <>Scan the QR with your Xaman app, or use the dev backdoor below for instant testing without a wallet.</>
+                  }
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
@@ -143,7 +160,7 @@ export function XamanLoginButton({ triggerProps = {}, onSuccess }) {
                   disabled={busy}
                   className="bg-[hsl(var(--phoenix-orange))] text-black hover:brightness-110"
                 >
-                  Simulate Sign
+                  {xamanCfg.mock_mode ? 'Simulate Sign' : 'Quick Test'}
                 </Button>
               </div>
             </div>

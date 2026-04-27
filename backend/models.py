@@ -144,7 +144,13 @@ class XamanSession(Base):
     status = Column(String, default='pending')  # pending | signed | rejected | expired
     address = Column(String, nullable=True)
     user_token = Column(String, nullable=True)
+    tx_hash = Column(String, nullable=True)
+    delivered_amount_drops = Column(String, nullable=True)
+    dispatched_nodetype = Column(String, nullable=True)
+    raw_response_json = Column(Text, nullable=True)
+    custom_meta_json = Column(Text, nullable=True)
     meta_json = Column(Text, nullable=True)
+    webhook_event_id = Column(String, nullable=True, index=True)  # idempotency key
     created_at = Column(DateTime(timezone=True), default=_now)
     resolved_at = Column(DateTime(timezone=True), nullable=True)
 

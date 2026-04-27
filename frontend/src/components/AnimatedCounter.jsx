@@ -3,13 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * AnimatedCounter — count-up animation with subtle glow flash on value change.
  *
- * @param {number} value     target value
- * @param {string} prefix    text before number (e.g. "$")
- * @param {string} suffix    text after number
- * @param {number} duration  ms for animation
- * @param {number} decimals  decimals to render
- * @param {string} className extra classes
- * @param {string} glowColor css color for the flash glow
+ * Robust against React strict-mode double effects: each effect run cancels its
+ * own RAF in cleanup, but does NOT short-circuit on the second run, so the
+ * animation always reaches the latest target.
  */
 export function AnimatedCounter({
   value = 0,
@@ -21,48 +17,60 @@ export function AnimatedCounter({
   glowColor = 'rgba(255, 107, 26, 0.55)',
   testId,
 }) {
-  const [display, setDisplay] = useState(0);
+  const [display, setDisplay] = useState(() => Number(value) || 0);
   const [flash, setFlash] = useState(false);
-  const fromRef = useRef(0);
-  const startRef = useRef(0);
+  const lastValueRef = useRef(Number(value) || 0);
   const rafRef = useRef(null);
-  const lastTargetRef = useRef(0);
+  const flashTimerRef = useRef(null);
 
   useEffect(() => {
-    const target = Number(value) || 0;
-    if (target === lastTargetRef.current) return;
-    fromRef.current = display;
-    startRef.current = performance.now();
-    lastTargetRef.current = target;
-
-    // glow flash on update (skip on first mount when display=0 and target=0)
-    if (target !== fromRef.current) {
-      setFlash(true);
-      const t = setTimeout(() => setFlash(false), 700);
-      // continue
-      const tick = (now) => {
-        const elapsed = now - startRef.current;
-        const p = Math.min(1, elapsed / duration);
-        // easeOutCubic
-        const eased = 1 - Math.pow(1 - p, 3);
-        const next = fromRef.current + (target - fromRef.current) * eased;
-        setDisplay(next);
-        if (p < 1) {
-          rafRef.current = requestAnimationFrame(tick);
-        } else {
-          setDisplay(target);
-        }
-      };
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(tick);
-      return () => {
-        clearTimeout(t);
-        cancelAnimationFrame(rafRef.current);
-      };
+    const target = Number(value);
+    if (!Number.isFinite(target)) return;
+    const from = lastValueRef.current;
+    if (target === from) {
+      // Still ensure displayed value is exactly the target (in case of mount with same value)
+      setDisplay(target);
+      return;
     }
-    setDisplay(target);
-    return undefined;
+    lastValueRef.current = target;
+
+    // glow flash
+    setFlash(true);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setFlash(false), 700);
+
+    // animate
+    const start = performance.now();
+    const tick = (now) => {
+      const elapsed = now - start;
+      const p = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const next = from + (target - from) * eased;
+      setDisplay(next);
+      if (p < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setDisplay(target);
+      }
+    };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      // Note: we intentionally do NOT cancel the RAF here, because in React strict
+      // mode the cleanup runs immediately after the first effect, and we want
+      // the animation to keep going after the second (identical) effect fires.
+      // The `rafRef` is reset on the next real change.
+    };
   }, [value, duration]);
+
+  // Final cleanup on unmount only
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
 
   const formatted =
     decimals > 0

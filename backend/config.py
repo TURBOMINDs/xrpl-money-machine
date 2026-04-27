@@ -17,6 +17,7 @@ class Settings:
     XAMAN_API_KEY: str = os.environ.get('XAMAN_API_KEY', 'mock_key_placeholder')
     XAMAN_API_SECRET: str = os.environ.get('XAMAN_API_SECRET', 'mock_secret_placeholder')
     XAMAN_MOCK_MODE: bool = os.environ.get('XAMAN_MOCK_MODE', 'true').lower() in ('1', 'true', 'yes')
+    XAMAN_WEBHOOK_VERIFY: bool = os.environ.get('XAMAN_WEBHOOK_VERIFY', 'true').lower() in ('1', 'true', 'yes')
     ONESIGNAL_APP_ID: str = os.environ.get('ONESIGNAL_APP_ID', 'mock_app_id_placeholder')
     ONESIGNAL_REST_API_KEY: str = os.environ.get('ONESIGNAL_REST_API_KEY', 'mock_rest_api_key_placeholder')
     ONESIGNAL_MOCK_MODE: bool = os.environ.get('ONESIGNAL_MOCK_MODE', 'true').lower() in ('1', 'true', 'yes')
