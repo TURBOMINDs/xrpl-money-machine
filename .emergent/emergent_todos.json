@@ -8,39 +8,39 @@
     "status": "completed"
   },
   {
-    "content": "Build services/liquidity_engine.py — Sunday 20:00 UTC scheduler, 65/35 split, dry-run + real XRPL signing",
+    "content": "Build services/liquidity_engine.py",
     "status": "completed"
   },
   {
-    "content": "Build services/whale_detector.py — enhanced classifier with sender balance cache + rank-based thresholds",
+    "content": "Build services/whale_detector.py",
     "status": "completed"
   },
   {
-    "content": "Build services/ohlc_engine.py — price snapshots + OHLC aggregation by timeframe",
+    "content": "Build services/ohlc_engine.py",
     "status": "completed"
   },
   {
-    "content": "Update worker.py to integrate new services; add APScheduler in server.py for Sunday cron",
+    "content": "Update worker.py + APScheduler in server.py for Sunday cron",
     "status": "completed"
   },
   {
-    "content": "Update /api/stats/subscriptions: add allocation fields. Add /api/liquidity/* endpoints",
+    "content": "Update /api/stats/subscriptions allocation. Add /api/liquidity/* endpoints",
     "status": "completed"
   },
   {
-    "content": "Update /api/amm/pairs/{id}/chart to use real OHLC with synthetic fallback",
+    "content": "Update /api/amm/pairs/{id}/chart to use real OHLC",
     "status": "completed"
   },
   {
-    "content": "Frontend: add allocation breakdown to LiquiditySupportTracker, dest wallet badge, dry-run indicator",
+    "content": "Frontend: allocation breakdown + dry-run + community wallet in LiquiditySupportTracker",
     "status": "completed"
   },
   {
-    "content": "Frontend: add LiquidityExecutionLog component showing recent executions",
+    "content": "Frontend: LiquidityExecutionLog component",
     "status": "completed"
   },
   {
     "content": "End-to-end test via testing_agent_v3",
-    "status": "in_progress"
+    "status": "completed"
   }
 ]
