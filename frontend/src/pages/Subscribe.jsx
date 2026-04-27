@@ -5,6 +5,7 @@ import { TierCard } from '@/components/TierCard';
 import { SubscribePaymentModal } from '@/components/SubscribePaymentModal';
 import { LiquiditySupportTracker } from '@/components/LiquiditySupportTracker';
 import { TrustMessage } from '@/components/TrustMessage';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Flame } from 'lucide-react';
@@ -109,6 +110,7 @@ export default function Subscribe() {
         <LiquiditySupportTracker />
       </main>
       <SubscribePaymentModal open={open} onOpenChange={setOpen} tier={tier} intent={intent} />
+      <Footer />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TopNav } from '@/components/TopNav';
+import { Footer } from '@/components/Footer';
 import { CandlestickChart } from '@/components/CandlestickChart';
 import { PriceAlertsModal } from '@/components/PriceAlertsModal';
 import { LiveAlertsPanel } from '@/components/LiveAlertsPanel';
@@ -74,6 +75,7 @@ export default function PairDetail() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { TopNav } from '@/components/TopNav';
+import { Footer } from '@/components/Footer';
+import { NotificationIndicator } from '@/components/NotificationIndicator';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Flame, Bell, Check, Settings as SettingsIcon, Wallet, Send } from 'lucide-react';
+import { Flame, Bell, Check, Settings as SettingsIcon, Wallet, Send, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
-import { notifApi } from '@/lib/api';
+import { notifApi, systemApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 export default function Settings() {
   const { user, me, logout } = useAuth();
   const [osConfig, setOsConfig] = useState(null);
   const [browserEnabled, setBrowserEnabled] = useState(false);
+  const [readiness, setReadiness] = useState(null);
 
   useEffect(() => {
     notifApi.config().then(({ data }) => setOsConfig(data)).catch(() => {});
@@ -33,6 +36,17 @@ export default function Settings() {
       toast.success(data?.mock ? 'Mock push sent (check server log)' : `Push sent to ${data?.sent} device(s)`);
     } catch (e) {
       toast.error('Failed to send test push');
+    }
+  };
+
+  const sendBroadcast = async () => {
+    try {
+      const { data } = await notifApi.testBroadcast('XRPL UMM Broadcast', 'This is a test broadcast to all subscribed users.');
+      const mode = data?.mode || 'unknown';
+      toast.success(`Broadcast sent (mode=${mode})`);
+    } catch (e) {
+      const msg = e?.response?.data?.detail || 'Failed to send broadcast';
+      toast.error(msg);
     }
   };
 
@@ -110,19 +124,56 @@ export default function Settings() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Xaman (XUMM)</span>
-              <span className="font-mono text-[hsl(var(--phoenix-orange))]">mock mode</span>
+              <span className={`font-mono ${readiness?.xaman_live ? 'text-emerald-300' : 'text-[hsl(var(--phoenix-orange))]'}`}>
+                {readiness?.xaman_live ? 'LIVE' : 'mock mode'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Xaman webhook</span>
+              <span className={`font-mono ${readiness?.webhook_configured ? 'text-emerald-300' : 'text-[hsl(var(--phoenix-orange))]'}`}>
+                {readiness?.webhook_configured ? 'CONFIGURED' : 'pending'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">OneSignal Web Push</span>
-              <span className="font-mono text-[hsl(var(--alerts-magenta))]">{osConfig?.mock_mode ? 'mock mode' : 'live'}</span>
+              <span className={`font-mono ${readiness?.onesignal_live ? 'text-emerald-300' : 'text-[hsl(var(--alerts-magenta))]'}`}>
+                {readiness?.onesignal_live ? 'LIVE' : (readiness?.onesignal_app_id_set ? 'app-id set, awaiting REST key' : 'not configured')}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">XRPL Node</span>
               <span className="font-mono text-[hsl(var(--electric-blue))]">live (s1.ripple.com)</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Liquidity engine</span>
+              <span className={`font-mono ${readiness?.liquidity_dry_run ? 'text-[hsl(var(--alerts-magenta))]' : 'text-emerald-300'}`}>
+                {readiness?.liquidity_dry_run ? 'DRY RUN' : 'LIVE'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Admin protection</span>
+              <span className={`font-mono ${readiness?.admin_protection_enabled ? 'text-emerald-300' : 'text-[hsl(var(--neon-red))]'}`}>
+                {readiness?.admin_protection_enabled ? 'ENABLED' : 'open (dev)'}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-white/10 pt-2 mt-2">
+              <span className="text-muted-foreground font-display uppercase tracking-widest">Public launch</span>
+              <span className={`font-display uppercase tracking-widest ${readiness?.ready_for_public_launch ? 'text-emerald-300' : 'text-[hsl(var(--neon-red))]'}`}>
+                {readiness?.ready_for_public_launch ? 'READY' : 'NOT READY'}
+              </span>
+            </div>
           </div>
+          {readiness?.blockers?.length > 0 && (
+            <div className="mt-3 p-3 rounded-xl bg-[hsl(var(--neon-red))]/8 border border-[hsl(var(--neon-red))]/30 text-[11px]" data-testid="settings-readiness-blockers">
+              <div className="font-display uppercase tracking-widest text-[hsl(var(--neon-red))] mb-1">Blockers</div>
+              <ul className="list-disc list-inside text-white/80 space-y-0.5">
+                {readiness.blockers.map((b) => <li key={b}>{b}</li>)}
+              </ul>
+            </div>
+          )}
         </Card>
       </main>
+      <Footer />
     </div>
   );
 }

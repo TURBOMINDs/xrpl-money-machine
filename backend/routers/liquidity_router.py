@@ -10,6 +10,7 @@ from auth import current_user, optional_current_user
 from config import settings
 from database import get_db
 from models import LiquidityExecution, User
+from services.admin_auth import require_admin
 from services.liquidity_engine import execute_cycle, _to_dict
 
 router = APIRouter(prefix='/liquidity', tags=['liquidity'])
@@ -46,7 +47,7 @@ async def list_executions(
     return {'items': [_to_dict(r) for r in rows]}
 
 
-@router.post('/run-now')
+@router.post('/run-now', dependencies=[Depends(require_admin)])
 async def run_now(
     user: Optional[User] = Depends(optional_current_user),
     force: bool = Query(False, description='Force a new execution even if one already ran in the last 12h'),
@@ -54,8 +55,9 @@ async def run_now(
 ):
     """Manually trigger a liquidity-execution cycle.
 
-    Available to any authenticated user in mock/dry-run mode (testing convenience).
-    In production you should require admin authentication and feature-flag this.
+    PRODUCTION SAFETY: gated behind `x-admin-key` header when `ADMIN_API_KEY` is set
+    in the environment. In dry-run mode the engine cannot send real funds; the gate
+    prevents anonymous traffic from spamming the cycle endpoint.
     """
     if not user and not (settings.LIQUIDITY_DRY_RUN or not settings.LIQUIDITY_TREASURY_SEED):
         raise HTTPException(401, detail='auth required for live runs')

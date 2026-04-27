@@ -12,6 +12,7 @@ import { Flame, Zap, Shield, ChevronDown } from 'lucide-react';
 import { subsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useSubscriptionStats } from '@/lib/useStats';
+import { Footer } from '@/components/Footer';
 
 export default function Landing() {
   const [plans, setPlans] = useState([]);
@@ -153,6 +154,7 @@ export default function Landing() {
           <span>Xaman integration in mock mode — swap API keys to go live.</span>
         </footer>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -31,6 +31,7 @@ from models import PaymentIntent, Subscription, User, XamanSession
 from schemas import (
     UserOut, XamanMockResolveRequest, XamanSignInResponse, XamanStatusResponse,
 )
+from services.admin_auth import require_admin
 from services.xaman_service import xaman_service
 
 router = APIRouter(prefix='/auth/xaman', tags=['auth'])
@@ -119,15 +120,16 @@ async def xaman_status(payload_uuid: str, db: AsyncSession = Depends(get_db)):
 # ──────────────────────────────────────────────────────────────────────────────
 # Mock resolve — DEV BACKDOOR (works in both modes)
 # ──────────────────────────────────────────────────────────────────────────────
-@router.post('/mock-resolve', response_model=XamanStatusResponse)
+@router.post('/mock-resolve', response_model=XamanStatusResponse, dependencies=[Depends(require_admin)])
 async def xaman_mock_resolve(
     body: XamanMockResolveRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Create or fetch a User by XRPL address and issue a JWT.
 
-    This bypasses Xaman entirely so automated tests and local dev work without
-    a wallet on hand. Behaves identically in mock and real modes.
+    PRODUCTION SAFETY: gated behind `x-admin-key` when ADMIN_API_KEY is set.
+    Bypasses Xaman entirely so automated tests and local dev work without a wallet.
+    Behaves identically in mock and real Xaman modes.
     """
     addr = body.address.strip()
     if not addr.startswith('r') or len(addr) < 25:

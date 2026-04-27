@@ -11,6 +11,8 @@ import { SubscribePaymentModal } from '@/components/SubscribePaymentModal';
 import { LiquiditySupportTracker } from '@/components/LiquiditySupportTracker';
 import { LiquidityExecutionLog } from '@/components/LiquidityExecutionLog';
 import { TrustMessage } from '@/components/TrustMessage';
+import { NotificationIndicator } from '@/components/NotificationIndicator';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +21,7 @@ import { Flame, Play, Pause, Trash2, BarChart3, Gauge } from 'lucide-react';
 import { ammApi, subsApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useSubscriptionStats } from '@/lib/useStats';
+import { useOneSignal } from '@/lib/useOneSignal';
 import { formatXRP, formatUSD, shortAddr } from '@/lib/format';
 
 export default function Dashboard() {
@@ -32,6 +35,8 @@ export default function Dashboard() {
   const [busy, setBusy] = useState(false);
   const nav = useNavigate();
   const { stats } = useSubscriptionStats(15000);
+  // Initialize OneSignal SDK + sync subscription to backend on dashboard load
+  useOneSignal({ user });
 
   const loadPairs = async () => {
     const { data } = await ammApi.list();
@@ -276,6 +281,7 @@ export default function Dashboard() {
         tier={paymentTier}
         intent={pendingIntent}
       />
+      <Footer />
     </div>
   );
 }

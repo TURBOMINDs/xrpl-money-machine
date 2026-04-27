@@ -1,34 +1,46 @@
 [
   {
-    "content": "Step 1: Re-run /api/liquidity/run-now?force=true (clean test)",
-    "status": "completed"
-  },
-  {
-    "content": "Add convenience fields (executed, allocation object) to liquidity execution response",
-    "status": "completed"
-  },
-  {
-    "content": "Add real Xaman API keys to .env (430cc70f / 4d3d696e)",
-    "status": "completed"
-  },
-  {
-    "content": "Update XamanService real path to use proper request signing per Xaman API spec",
-    "status": "completed"
-  },
-  {
-    "content": "Build /api/auth/xaman/webhook endpoint with HMAC signature verification",
-    "status": "completed"
-  },
-  {
-    "content": "Step 3: Verify DB write to liquidity_executions + support_actions",
-    "status": "completed"
-  },
-  {
-    "content": "Step 4: Verify UI updates (Last Support Action, counters, allocation bar)",
-    "status": "completed"
-  },
-  {
-    "content": "Test end-to-end via testing_agent_v3",
+    "content": "Update backend .env: ADMIN_API_KEY, real OneSignal App ID, render webhook URL flag",
     "status": "in_progress"
+  },
+  {
+    "content": "Build admin auth dependency (x-admin-key header) + apply to /liquidity/run-now and /auth/xaman/mock-resolve",
+    "status": "pending"
+  },
+  {
+    "content": "Build /api/system/readiness endpoint with all production-readiness flags",
+    "status": "pending"
+  },
+  {
+    "content": "Build /api/alerts/test-notification (admin-protected) for broadcast push test",
+    "status": "pending"
+  },
+  {
+    "content": "OneSignal service: graceful fallback when REST key missing; broadcast helper using external_id",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend public/: add OneSignalSDKWorker.js + add OneSignal v16 SDK script to index.html",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend hook: useOneSignal (initialize, prompt permission, sync subscription to backend)",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend: NotificationIndicator (Enabled/Disabled badge + Enable Alerts button)",
+    "status": "pending"
+  },
+  {
+    "content": "Frontend pages: /terms and /privacy + Footer with links",
+    "status": "pending"
+  },
+  {
+    "content": "Wire useOneSignal into Dashboard (auto-prompt after login) + add NotificationIndicator to TopNav",
+    "status": "pending"
+  },
+  {
+    "content": "End-to-end test via testing_agent_v3",
+    "status": "pending"
   }
 ]

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
 import { shortAddr } from '@/lib/format';
+import { NotificationIndicator } from '@/components/NotificationIndicator';
 
 export function TopNav() {
   const { user, me, logout } = useAuth();
@@ -47,6 +48,7 @@ export function TopNav() {
         <div className="ml-auto flex items-center gap-2">
           {user ? (
             <>
+              <NotificationIndicator compact />
               {me?.subscription && (
                 <Badge
                   data-testid="nav-subscription-badge"

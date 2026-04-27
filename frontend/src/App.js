@@ -7,6 +7,8 @@ import PairDetail from '@/pages/PairDetail';
 import AlertsPage from '@/pages/AlertsPage';
 import Settings from '@/pages/Settings';
 import Subscribe from '@/pages/Subscribe';
+import Terms from '@/pages/Terms';
+import Privacy from '@/pages/Privacy';
 import '@/App.css';
 
 function Protected({ children }) {
@@ -32,6 +34,8 @@ function AppRoutes() {
       <Route path="/alerts" element={<Protected><AlertsPage /></Protected>} />
       <Route path="/settings" element={<Protected><Settings /></Protected>} />
       <Route path="/subscribe" element={<Protected><Subscribe /></Protected>} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

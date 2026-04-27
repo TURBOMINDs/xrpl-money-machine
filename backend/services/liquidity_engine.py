@@ -172,6 +172,16 @@ async def execute_cycle(force: bool = False, override_amount: Optional[float] = 
                     note=f'Weekly XEMA support ({xema_pct}% of {weekly:.2f} XRP)',
                     created_at=datetime.now(timezone.utc),
                 ))
+                # Broadcast push to all subscribed users
+                try:
+                    from services.onesignal_service import onesignal_service
+                    await onesignal_service.broadcast(
+                        heading='XEMA Liquidity Injection',
+                        content=f'{xema_xrp:.2f} XRP injected into XEMA AMM ({xema_pct}% of weekly).',
+                        data={'kind': 'liquidity_executed', 'amount_xrp': xema_xrp, 'tx_hash': tx_hash},
+                    )
+                except Exception as _:
+                    pass
             execution.log = '\n'.join(log_lines)
             await session.commit()
             log.info('Liquidity cycle complete: %s %s XRP -> %s', execution.status, xema_xrp, execution.dest_amm_address)

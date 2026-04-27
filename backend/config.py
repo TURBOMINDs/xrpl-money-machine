@@ -18,9 +18,16 @@ class Settings:
     XAMAN_API_SECRET: str = os.environ.get('XAMAN_API_SECRET', 'mock_secret_placeholder')
     XAMAN_MOCK_MODE: bool = os.environ.get('XAMAN_MOCK_MODE', 'true').lower() in ('1', 'true', 'yes')
     XAMAN_WEBHOOK_VERIFY: bool = os.environ.get('XAMAN_WEBHOOK_VERIFY', 'true').lower() in ('1', 'true', 'yes')
-    ONESIGNAL_APP_ID: str = os.environ.get('ONESIGNAL_APP_ID', 'mock_app_id_placeholder')
-    ONESIGNAL_REST_API_KEY: str = os.environ.get('ONESIGNAL_REST_API_KEY', 'mock_rest_api_key_placeholder')
-    ONESIGNAL_MOCK_MODE: bool = os.environ.get('ONESIGNAL_MOCK_MODE', 'true').lower() in ('1', 'true', 'yes')
+    ONESIGNAL_APP_ID: str = os.environ.get('ONESIGNAL_APP_ID', '')
+    # Support both ONESIGNAL_REST_KEY and the older ONESIGNAL_REST_API_KEY var.
+    ONESIGNAL_REST_API_KEY: str = (
+        os.environ.get('ONESIGNAL_REST_KEY')
+        or os.environ.get('ONESIGNAL_REST_API_KEY')
+        or ''
+    )
+    ONESIGNAL_MOCK_MODE: bool = os.environ.get('ONESIGNAL_MOCK_MODE', 'false').lower() in ('1', 'true', 'yes')
+    XAMAN_WEBHOOK_REGISTERED: bool = os.environ.get('XAMAN_WEBHOOK_REGISTERED', 'false').lower() in ('1', 'true', 'yes')
+    ADMIN_API_KEY: str = os.environ.get('ADMIN_API_KEY', '')
     JWT_SECRET: str = os.environ.get('JWT_SECRET', 'dev-secret-change-me')
     JWT_ALGORITHM: str = os.environ.get('JWT_ALGORITHM', 'HS256')
     JWT_EXPIRE_HOURS: int = int(os.environ.get('JWT_EXPIRE_HOURS', '168'))

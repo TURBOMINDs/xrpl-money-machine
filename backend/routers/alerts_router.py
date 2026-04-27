@@ -10,6 +10,8 @@ from auth import current_user, optional_current_user
 from database import get_db
 from models import Alert, AlertEvent, User
 from schemas import AlertEventOut, AlertOut, CreateAlertRequest
+from services.admin_auth import require_admin
+from services.onesignal_service import onesignal_service
 
 router = APIRouter(tags=['alerts'])
 
@@ -87,3 +89,27 @@ async def list_events(
     q = q.order_by(desc(AlertEvent.created_at)).limit(limit)
     res = await db.execute(q)
     return [AlertEventOut.model_validate(e) for e in res.scalars().all()]
+
+
+@router.post('/alerts/test-notification', dependencies=[Depends(require_admin)])
+async def test_broadcast_notification(
+    heading: str = 'XRPL UMM Test Alert',
+    content: str = 'This is a test broadcast notification from XRPL Universal Money Machine.',
+):
+    """Send a test push notification to ALL subscribed users.
+
+    Admin-protected. Useful to verify OneSignal integration end-to-end before
+    relying on real whale/price/liquidity events to trigger pushes.
+    """
+    res = await onesignal_service.broadcast(
+        heading=heading,
+        content=content,
+        data={'test': True, 'kind': 'broadcast_test'},
+    )
+    return {
+        'ok': True,
+        'mode': onesignal_service.mode,
+        'app_id': onesignal_service.app_id,
+        'result': res,
+    }
+

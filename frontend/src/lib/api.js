@@ -68,6 +68,15 @@ export const notifApi = {
   test: (heading, content) =>
     api.post('/notifications/test', { heading, content }),
   log: () => api.get('/notifications/log'),
+  testBroadcast: (heading, content) =>
+    api.post('/alerts/test-notification', null, {
+      params: { heading, content },
+    }),
+};
+
+export const systemApi = {
+  readiness: () => api.get('/system/readiness'),
+  version: () => api.get('/system/version'),
 };
 
 export const statsApi = {

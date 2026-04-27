@@ -20,6 +20,7 @@ from routers.notifications_router import router as notifications_router
 from routers.ranks_router import router as ranks_router
 from routers.stats_router import router as stats_router
 from routers.subscription_router import router as subscription_router
+from routers.system_router import router as system_router
 from services.liquidity_engine import execute_cycle
 from services.price_service import get_xrp_usd
 from services.worker import worker_loop
@@ -159,5 +160,6 @@ api.include_router(ranks_router)
 api.include_router(notifications_router)
 api.include_router(stats_router)
 api.include_router(liquidity_router)
+api.include_router(system_router)
 
 app.include_router(api)
