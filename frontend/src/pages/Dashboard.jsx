@@ -9,6 +9,7 @@ import { PriceAlertsModal } from '@/components/PriceAlertsModal';
 import { TierCard } from '@/components/TierCard';
 import { SubscribePaymentModal } from '@/components/SubscribePaymentModal';
 import { LiquiditySupportTracker } from '@/components/LiquiditySupportTracker';
+import { LiquidityExecutionLog } from '@/components/LiquidityExecutionLog';
 import { TrustMessage } from '@/components/TrustMessage';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -265,7 +266,8 @@ export default function Dashboard() {
         )}
 
         {/* Liquidity Support Tracker (shown to all logged-in users) */}
-        <LiquiditySupportTracker />
+        <LiquiditySupportTracker showAdmin />
+        <LiquidityExecutionLog />
       </main>
 
       <SubscribePaymentModal

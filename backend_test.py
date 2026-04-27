@@ -517,6 +517,228 @@ class XRPLBackendTester:
                 print("❌ Support history response missing 'items' array")
         return False
 
+    def test_liquidity_status(self):
+        """Test liquidity engine status endpoint"""
+        # Test without authentication to ensure it's public
+        temp_token = self.token
+        self.token = None
+        
+        success, response = self.run_test(
+            "Liquidity Engine Status",
+            "GET",
+            "liquidity/status",
+            200
+        )
+        
+        self.token = temp_token
+        
+        if success:
+            required_fields = [
+                'dry_run', 'has_treasury_seed', 'community_wallet', 
+                'target_amm_address', 'allocation_xema_pct', 'allocation_ops_pct',
+                'cron', 'last_execution'
+            ]
+            
+            if all(field in response for field in required_fields):
+                print(f"   Dry run: {response['dry_run']}")
+                print(f"   Has treasury seed: {response['has_treasury_seed']}")
+                print(f"   Community wallet: {response['community_wallet']}")
+                print(f"   XEMA allocation: {response['allocation_xema_pct']}%")
+                print(f"   Ops allocation: {response['allocation_ops_pct']}%")
+                print(f"   Cron: {response['cron']}")
+                
+                # Verify expected values
+                if (response['community_wallet'] == 'rJkpUojYKYArCRkrdDhaSMZzTw77r1UiMC' and
+                    response['allocation_xema_pct'] == 65 and
+                    response['allocation_ops_pct'] == 35 and
+                    response['cron'] == 'Sunday 20:00 UTC'):
+                    return True
+                else:
+                    print("❌ Liquidity status values don't match expected configuration")
+                    return False
+            else:
+                missing = [f for f in required_fields if f not in response]
+                print(f"❌ Missing required fields: {missing}")
+        return False
+
+    def test_liquidity_run_now(self):
+        """Test manual liquidity execution trigger"""
+        success, response = self.run_test(
+            "Liquidity Run Now (Dry Run)",
+            "POST",
+            "liquidity/run-now?force=true&override_amount=200",
+            200
+        )
+        
+        if success:
+            required_fields = [
+                'id', 'status', 'allocated_xema_xrp', 'allocated_ops_xrp',
+                'dest_amm_address', 'tx_hash', 'dry_run'
+            ]
+            
+            if all(field in response for field in required_fields):
+                print(f"   Status: {response['status']}")
+                print(f"   Allocated XEMA XRP: {response['allocated_xema_xrp']}")
+                print(f"   Allocated Ops XRP: {response['allocated_ops_xrp']}")
+                print(f"   Dry run: {response['dry_run']}")
+                print(f"   TX hash: {response['tx_hash']}")
+                
+                # Verify dry run behavior and allocation split
+                if (response['dry_run'] == True and
+                    response['status'] == 'dry_run' and
+                    response['tx_hash'].startswith('DRYRUN') and
+                    response['allocated_xema_xrp'] == 130.0 and  # 65% of 200
+                    response['allocated_ops_xrp'] == 70.0 and    # 35% of 200
+                    response['dest_amm_address'] == 'rJkpUojYKYArCRkrdDhaSMZzTw77r1UiMC'):
+                    return True, response['id']
+                else:
+                    print("❌ Liquidity execution values don't match expected dry run behavior")
+                    return False, None
+            else:
+                missing = [f for f in required_fields if f not in response]
+                print(f"❌ Missing required fields: {missing}")
+        return False, None
+
+    def test_liquidity_executions(self):
+        """Test liquidity executions list endpoint"""
+        success, response = self.run_test(
+            "Liquidity Executions List",
+            "GET",
+            "liquidity/executions",
+            200
+        )
+        
+        if success:
+            if 'items' in response and isinstance(response['items'], list):
+                print(f"   Found {len(response['items'])} executions")
+                
+                # Check first item structure if exists
+                if response['items']:
+                    item = response['items'][0]
+                    required_fields = [
+                        'id', 'status', 'allocated_xema_xrp', 'allocated_ops_xrp',
+                        'weekly_collected_xrp', 'dry_run', 'created_at'
+                    ]
+                    if all(field in item for field in required_fields):
+                        print(f"   Latest execution: {item['status']} - {item['allocated_xema_xrp']} XRP to XEMA")
+                        return True
+                    else:
+                        print(f"❌ Execution item missing required fields: {item}")
+                        return False
+                else:
+                    print("   No executions found yet")
+                    return True
+            else:
+                print("❌ Executions response missing 'items' array")
+        return False
+
+    def test_enhanced_subscription_stats(self):
+        """Test enhanced subscription stats with allocation and community wallet"""
+        # Test without authentication to ensure it's public
+        temp_token = self.token
+        self.token = None
+        
+        success, response = self.run_test(
+            "Enhanced Subscription Stats",
+            "GET",
+            "stats/subscriptions",
+            200
+        )
+        
+        self.token = temp_token
+        
+        if success:
+            required_fields = [
+                'basic_wallets', 'plus_wallets', 'ultimate_wallets', 
+                'weekly_xrp_collected', 'allocation', 'community_wallet', 'dry_run'
+            ]
+            
+            if all(field in response for field in required_fields):
+                allocation = response['allocation']
+                allocation_fields = ['xema_pct', 'ops_pct', 'xema_support_xrp', 'ops_growth_xrp']
+                
+                if all(field in allocation for field in allocation_fields):
+                    print(f"   Allocation - XEMA: {allocation['xema_pct']}% ({allocation['xema_support_xrp']} XRP)")
+                    print(f"   Allocation - Ops: {allocation['ops_pct']}% ({allocation['ops_growth_xrp']} XRP)")
+                    print(f"   Community wallet: {response['community_wallet']}")
+                    print(f"   Dry run mode: {response['dry_run']}")
+                    
+                    # Verify expected values
+                    if (allocation['xema_pct'] == 65 and
+                        allocation['ops_pct'] == 35 and
+                        response['community_wallet'] == 'rJkpUojYKYArCRkrdDhaSMZzTw77r1UiMC'):
+                        return True
+                    else:
+                        print("❌ Enhanced stats values don't match expected configuration")
+                        return False
+                else:
+                    print(f"❌ Allocation object missing required fields: {allocation}")
+                    return False
+            else:
+                missing = [f for f in required_fields if f not in response]
+                print(f"❌ Missing required fields: {missing}")
+        return False
+
+    def test_amm_chart_ohlc_engine(self, pair_id):
+        """Test AMM chart endpoint with OHLC engine features"""
+        success, response = self.run_test(
+            "AMM Chart with OHLC Engine",
+            "GET",
+            f"amm/pairs/{pair_id}/chart",
+            200
+        )
+        
+        if success:
+            required_fields = ['points', 'synthetic', 'snapshot_count']
+            
+            if all(field in response for field in required_fields):
+                print(f"   Chart points: {len(response['points'])}")
+                print(f"   Synthetic data: {response['synthetic']}")
+                print(f"   Snapshot count: {response['snapshot_count']}")
+                
+                # Verify structure
+                if isinstance(response['points'], list) and len(response['points']) > 0:
+                    point = response['points'][0]
+                    point_fields = ['t', 'o', 'h', 'l', 'c', 'v']
+                    if all(field in point for field in point_fields):
+                        print(f"   Sample point: O={point['o']}, H={point['h']}, L={point['l']}, C={point['c']}")
+                        return True
+                    else:
+                        print(f"❌ Chart point missing OHLC fields: {point}")
+                        return False
+                else:
+                    print("❌ No chart points returned")
+                    return False
+            else:
+                missing = [f for f in required_fields if f not in response]
+                print(f"❌ Missing required fields: {missing}")
+        return False
+
+    def test_subscription_dest_address(self):
+        """Test that subscription destination address is community wallet"""
+        success, response = self.run_test(
+            "Subscription Payment with Community Wallet",
+            "POST",
+            "subscriptions/subscribe",
+            200,
+            data={"tier": "plus"}
+        )
+        
+        if success:
+            if 'dest_address' in response:
+                dest_address = response['dest_address']
+                print(f"   Subscription destination: {dest_address}")
+                
+                if dest_address == 'rJkpUojYKYArCRkrdDhaSMZzTw77r1UiMC':
+                    return True, response.get('intent_id')
+                else:
+                    print(f"❌ Subscription destination should be community wallet, got: {dest_address}")
+                    return False, None
+            else:
+                print("❌ Subscription response missing dest_address")
+                return False, None
+        return False, None
+
     def test_stats_after_subscription_changes(self):
         """Test that stats reflect subscription changes correctly"""
         print("\n🔍 Testing stats changes after subscription operations...")
@@ -541,10 +763,6 @@ class XRPLBackendTester:
         
         print(f"   Initial - Basic: {initial_basic}, Plus: {initial_plus}, Weekly XRP: {initial_weekly}")
         
-        # Create a new user and start trial (should increase basic_wallets)
-        # Note: This test assumes we can create multiple users, which may not be possible
-        # in the current setup. We'll test with existing user operations instead.
-        
         # Test subscription upgrade (if user doesn't already have plus)
         me_success, me_response = self.run_test(
             "Check Current User",
@@ -561,7 +779,7 @@ class XRPLBackendTester:
             
             # If user doesn't have plus subscription, try to create one
             if current_tier != 'plus' or current_status != 'active':
-                payment_success, intent_id = self.test_subscription_payment()
+                payment_success, intent_id = self.test_subscription_dest_address()
                 if payment_success and intent_id:
                     resolve_success = self.test_mock_payment_resolve(intent_id)
                     if resolve_success:
@@ -715,6 +933,27 @@ class XRPLBackendTester:
         
         self.test_subscription_stats()
         self.test_support_history()
+        
+        # Test new liquidity engine features
+        print("\n" + "="*50)
+        print("TESTING LIQUIDITY EXECUTION ENGINE")
+        print("="*50)
+        
+        self.test_liquidity_status()
+        execution_success, execution_id = self.test_liquidity_run_now()
+        if execution_success:
+            self.test_liquidity_executions()
+        
+        self.test_enhanced_subscription_stats()
+        
+        # Test enhanced AMM chart with OHLC engine
+        if pairs_success and pairs:
+            pair_id = pairs[0].get('id')
+            if pair_id:
+                self.test_amm_chart_ohlc_engine(pair_id)
+        elif pair_success and pair_id:
+            self.test_amm_chart_ohlc_engine(pair_id)
+        
         self.test_stats_after_subscription_changes()
         
         # Test slot limit enforcement (this should be done with a fresh user)

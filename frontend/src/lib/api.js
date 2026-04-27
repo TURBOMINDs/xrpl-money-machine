@@ -75,4 +75,14 @@ export const statsApi = {
   supportHistory: (limit = 10) => api.get('/stats/support-history', { params: { limit } }),
 };
 
+export const liquidityApi = {
+  status: () => api.get('/liquidity/status'),
+  executions: (limit = 20) => api.get('/liquidity/executions', { params: { limit } }),
+  runNow: ({ force = false, override_amount } = {}) => {
+    const params = { force };
+    if (override_amount !== undefined) params.override_amount = override_amount;
+    return api.post('/liquidity/run-now', null, { params });
+  },
+};
+
 export default api;

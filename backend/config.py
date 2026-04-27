@@ -10,7 +10,7 @@ load_dotenv(ROOT_DIR / '.env')
 class Settings:
     DATABASE_URL: str = os.environ.get(
         'DATABASE_URL',
-        'postgresql+asyncpg://xrpl_user:xrpl_pass_secure_2025@localhost:5432/xrpl_money_machine',
+        'sqlite+aiosqlite:////app/backend/db/app.db',
     )
     XRPL_RPC_URL: str = os.environ.get('XRPL_RPC_URL', 'https://s1.ripple.com:51234/')
     XRPL_WS_URL: str = os.environ.get('XRPL_WS_URL', 'wss://s1.ripple.com')
@@ -24,8 +24,21 @@ class Settings:
     JWT_ALGORITHM: str = os.environ.get('JWT_ALGORITHM', 'HS256')
     JWT_EXPIRE_HOURS: int = int(os.environ.get('JWT_EXPIRE_HOURS', '168'))
     SUBSCRIPTION_DEST_ADDRESS: str = os.environ.get(
-        'SUBSCRIPTION_DEST_ADDRESS', 'rPEPPER7kfTD9w2To4CQk6UCfuHM9c6GDY'
+        'SUBSCRIPTION_DEST_ADDRESS', 'rJkpUojYKYArCRkrdDhaSMZzTw77r1UiMC'
     )
+    # XEMA Liquidity Execution Engine
+    LIQUIDITY_DRY_RUN: bool = os.environ.get('LIQUIDITY_DRY_RUN', 'true').lower() in ('1', 'true', 'yes')
+    LIQUIDITY_TREASURY_SEED: str = os.environ.get('LIQUIDITY_TREASURY_SEED', '')
+    LIQUIDITY_TARGET_AMM_ADDRESS: str = os.environ.get('LIQUIDITY_TARGET_AMM_ADDRESS', '')
+    ALLOCATION_XEMA_PCT: float = float(os.environ.get('ALLOCATION_XEMA_PCT', '65'))
+    ALLOCATION_OPS_PCT: float = float(os.environ.get('ALLOCATION_OPS_PCT', '35'))
+    # OHLC engine
+    OHLC_SNAPSHOT_INTERVAL_SECONDS: int = int(os.environ.get('OHLC_SNAPSHOT_INTERVAL_SECONDS', '60'))
+    OHLC_RETENTION_DAYS: int = int(os.environ.get('OHLC_RETENTION_DAYS', '180'))
+    # Whale thresholds
+    WHALE_HUMPBACK_XRP: float = float(os.environ.get('WHALE_HUMPBACK_XRP', '100000'))
+    WHALE_SHARK_XRP: float = float(os.environ.get('WHALE_SHARK_XRP', '25000'))
+    WHALE_DOLPHIN_XRP: float = float(os.environ.get('WHALE_DOLPHIN_XRP', '5000'))
     CORS_ORIGINS: str = os.environ.get('CORS_ORIGINS', '*')
 
 

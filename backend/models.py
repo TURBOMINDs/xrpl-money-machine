@@ -169,3 +169,57 @@ class SupportAction(Base):
     tx_hash = Column(String, nullable=True)
     note = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), default=_now, index=True)
+
+
+class LiquidityExecution(Base):
+    """Tracks every run of the Liquidity Execution Engine (Sunday 20:00 UTC)."""
+    __tablename__ = 'liquidity_executions'
+    id = Column(String, primary_key=True, default=_uuid)
+    cycle_start = Column(DateTime(timezone=True), nullable=False)
+    cycle_end = Column(DateTime(timezone=True), nullable=False)
+    weekly_collected_xrp = Column(Float, default=0.0)
+    allocated_xema_xrp = Column(Float, default=0.0)
+    allocated_ops_xrp = Column(Float, default=0.0)
+    allocation_xema_pct = Column(Float, default=65.0)
+    allocation_ops_pct = Column(Float, default=35.0)
+    dest_amm_address = Column(String, nullable=True)
+    treasury_account = Column(String, nullable=True)
+    tx_hash = Column(String, nullable=True)
+    status = Column(String, default='pending')  # pending | submitted | success | failed | dry_run | skipped
+    dry_run = Column(Boolean, default=True)
+    error = Column(String, nullable=True)
+    log = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=_now, index=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class PriceSnapshot(Base):
+    """Periodic price snapshots of tracked AMM pairs for real OHLC aggregation."""
+    __tablename__ = 'price_snapshots'
+    id = Column(String, primary_key=True, default=_uuid)
+    amm_pair_id = Column(String, ForeignKey('amm_pairs.id', ondelete='CASCADE'), nullable=False, index=True)
+    price_xrp = Column(Float, nullable=True)
+    price_usd = Column(Float, nullable=True)
+    reserve_asset1 = Column(Float, nullable=True)
+    reserve_asset2 = Column(Float, nullable=True)
+    xrp_usd = Column(Float, nullable=True)
+    ts = Column(DateTime(timezone=True), default=_now, index=True)
+
+
+class PairTransaction(Base):
+    """Captured XRPL transactions touching a tracked AMM/LP. Used by whale detector + analytics."""
+    __tablename__ = 'pair_transactions'
+    id = Column(String, primary_key=True, default=_uuid)
+    amm_pair_id = Column(String, ForeignKey('amm_pairs.id', ondelete='CASCADE'), nullable=False, index=True)
+    tx_hash = Column(String, nullable=False, unique=True, index=True)
+    tx_type = Column(String, nullable=True)  # Payment | OfferCreate | AMMDeposit | AMMWithdraw | …
+    side = Column(String, nullable=True)  # buy | sell | add | remove | other
+    account = Column(String, nullable=True)  # initiator
+    counterparty = Column(String, nullable=True)
+    xrp_amount = Column(Float, default=0.0)
+    asset_amount = Column(Float, default=0.0)
+    actor_balance_xrp = Column(Float, nullable=True)  # snapshot at time of detection
+    actor_rank = Column(String, nullable=True)  # shrimp..humpback
+    ledger_index = Column(Integer, nullable=True)
+    raw_json = Column(Text, nullable=True)
+    detected_at = Column(DateTime(timezone=True), default=_now, index=True)

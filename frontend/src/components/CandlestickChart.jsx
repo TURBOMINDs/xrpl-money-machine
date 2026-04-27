@@ -41,12 +41,16 @@ export function CandlestickChart({ pairId }) {
   const [active, setActive] = useState('30D');
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState({ synthetic: true, snapshot_count: 0 });
 
   useEffect(() => {
     const r = RANGES.find((x) => x.id === active) || RANGES[2];
     setLoading(true);
     ammApi.chart(pairId, r.interval, r.range)
-      .then(({ data }) => setPoints((data?.points || []).slice(-80)))
+      .then(({ data }) => {
+        setPoints((data?.points || []).slice(-80));
+        setMeta({ synthetic: !!data?.synthetic, snapshot_count: data?.snapshot_count || 0 });
+      })
       .catch(() => setPoints([]))
       .finally(() => setLoading(false));
   }, [pairId, active]);
@@ -150,8 +154,28 @@ export function CandlestickChart({ pairId }) {
           </ResponsiveContainer>
         )}
       </div>
-      <div className="text-[10px] text-muted-foreground font-mono">
-        * Chart uses deterministic demo data seeded from live pool state (historical OHLCV not exposed by public XRPL node).
+      <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-2 flex-wrap" data-testid="chart-data-source-caption">
+        {meta.synthetic ? (
+          <>
+            <span
+              className="inline-block px-2 py-0.5 rounded-full bg-[hsl(var(--alerts-magenta))]/10 border border-[hsl(var(--alerts-magenta))]/30 text-[hsl(var(--alerts-magenta))] uppercase tracking-widest text-[9px]"
+              data-testid="chart-source-synthetic"
+            >
+              Synthetic
+            </span>
+            <span>* deterministic preview ({meta.snapshot_count} snapshots stored, more accumulating)</span>
+          </>
+        ) : (
+          <>
+            <span
+              className="inline-block px-2 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-400/30 text-emerald-400 uppercase tracking-widest text-[9px]"
+              data-testid="chart-source-real"
+            >
+              Live OHLC
+            </span>
+            <span>aggregated from {meta.snapshot_count} on-ledger snapshots</span>
+          </>
+        )}
       </div>
     </Card>
   );

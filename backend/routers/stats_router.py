@@ -93,6 +93,13 @@ async def subscription_stats(db: AsyncSession = Depends(get_db)):
 
     next_cycle_dt = _next_sunday_8pm()
 
+    # Allocation breakdown
+    from config import settings as _settings
+    xema_pct = float(_settings.ALLOCATION_XEMA_PCT)
+    ops_pct = float(_settings.ALLOCATION_OPS_PCT)
+    xema_xrp = round(weekly_xrp_collected * (xema_pct / 100.0), 4)
+    ops_xrp = round(weekly_xrp_collected * (ops_pct / 100.0), 4)
+
     return {
         'basic_wallets': basic_wallets,
         'plus_wallets': plus_wallets,
@@ -101,8 +108,17 @@ async def subscription_stats(db: AsyncSession = Depends(get_db)):
         'next_support_cycle': 'Sunday 8:00 PM',
         'next_support_cycle_at': next_cycle_dt.isoformat(),
         'last_support_action': last_payload,
-        # Total counts (helpful for badges)
         'total_unique_wallets': len(by_wallet),
+        # Allocation split (for the Liquidity Support Tracker UI)
+        'allocation': {
+            'xema_pct': xema_pct,
+            'ops_pct': ops_pct,
+            'xema_support_xrp': xema_xrp,
+            'ops_growth_xrp': ops_xrp,
+        },
+        # Community / dev wallet (public, safe to expose) \u2014 destination of all subscriptions
+        'community_wallet': _settings.SUBSCRIPTION_DEST_ADDRESS,
+        'dry_run': bool(_settings.LIQUIDITY_DRY_RUN or not _settings.LIQUIDITY_TREASURY_SEED),
     }
 
 

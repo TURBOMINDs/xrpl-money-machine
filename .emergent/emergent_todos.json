@@ -1,34 +1,46 @@
 [
   {
-    "content": "Backend: Add SupportAction model + Alembic-style table for last_support_action persistence",
+    "content": "Update backend .env: community wallet, allocation %, dry-run flag, treasury seed placeholder",
     "status": "completed"
   },
   {
-    "content": "Backend: Create /api/stats/subscriptions endpoint (public, no auth) with DISTINCT wallet counts + weekly XRP + next cycle + last action",
+    "content": "Add new models: PriceSnapshot, LiquidityExecution, PairTransaction",
     "status": "completed"
   },
   {
-    "content": "Backend: Auto-seed sample support action so UI has data on first load",
+    "content": "Build services/liquidity_engine.py — Sunday 20:00 UTC scheduler, 65/35 split, dry-run + real XRPL signing",
     "status": "completed"
   },
   {
-    "content": "Frontend: Add statsApi + AnimatedCounter component (count-up + glow on update)",
+    "content": "Build services/whale_detector.py — enhanced classifier with sender balance cache + rank-based thresholds",
     "status": "completed"
   },
   {
-    "content": "Frontend: TierCard footer wallet count badges (Basic=Users joined, Plus=Active traders, Ultimate=Elite trackers)",
+    "content": "Build services/ohlc_engine.py — price snapshots + OHLC aggregation by timeframe",
     "status": "completed"
   },
   {
-    "content": "Frontend: LiquiditySupportTracker module on Dashboard (weekly XRP + countdown + last action)",
+    "content": "Update worker.py to integrate new services; add APScheduler in server.py for Sunday cron",
     "status": "completed"
   },
   {
-    "content": "Frontend: Trust messaging banner below pricing cards on Landing + Subscribe",
+    "content": "Update /api/stats/subscriptions: add allocation fields. Add /api/liquidity/* endpoints",
     "status": "completed"
   },
   {
-    "content": "Test end-to-end via testing_agent_v3",
+    "content": "Update /api/amm/pairs/{id}/chart to use real OHLC with synthetic fallback",
+    "status": "completed"
+  },
+  {
+    "content": "Frontend: add allocation breakdown to LiquiditySupportTracker, dest wallet badge, dry-run indicator",
+    "status": "completed"
+  },
+  {
+    "content": "Frontend: add LiquidityExecutionLog component showing recent executions",
+    "status": "completed"
+  },
+  {
+    "content": "End-to-end test via testing_agent_v3",
     "status": "in_progress"
   }
 ]

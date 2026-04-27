@@ -1,4 +1,10 @@
-"""Background worker: polls tracked AMM pairs, evaluates alerts, emits events."""
+"""Background worker: polls tracked AMM pairs, evaluates alerts, emits events.
+
+Now also:
+- captures every fresh transaction touching a tracked AMM as `pair_transactions`
+- classifies the actor by XRPL balance \u2192 whale rank
+- takes periodic OHLC price snapshots (`price_snapshots`)
+"""
 import asyncio
 import json
 import logging
@@ -8,12 +14,19 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 
+from config import settings
 from database import db_context
-from models import Alert, AlertEvent, AmmPair, OneSignalDevice, User, HolderRankConfig
+from models import (
+    Alert, AlertEvent, AmmPair, OneSignalDevice, User, HolderRankConfig,
+    PairTransaction,
+)
 from services.onesignal_service import onesignal_service
 from services.price_service import get_xrp_usd
 from services.ranks import classify_rank
+from services.whale_detector import classify_actor, whale_severity
+from services.ohlc_engine import take_snapshot, prune_old_snapshots
 from services.xrpl_service import xrpl_service
 
 log = logging.getLogger('worker')
@@ -22,17 +35,6 @@ log = logging.getLogger('worker')
 _last_seen: Dict[str, set] = {}
 # cache last reserve per pair for liquidity surge detection
 _last_reserve: Dict[str, float] = {}
-
-WHALE_THRESHOLDS = {
-    'shrimp': 500,
-    'crab': 2_000,
-    'octopus': 7_000,
-    'dolphin': 25_000,
-    'orca': 50_000,
-    'shark': 100_000,
-    'whale': 500_000,  # not used directly for alerts
-    'humpback': 100_000,  # humpback buys: >= 100k XRP
-}
 
 
 async def _emit_event(session, *, user_id, amm_pair_id, type_, severity, title, message, tx_hash=None, payload=None):
@@ -100,7 +102,17 @@ async def poll_amm_pair(pair: AmmPair, session):
             )
     _last_reserve[pair.id] = cur_reserve
 
-    # Whale tx scan
+    # Whale tx scan with rank classification + persistence
+    xrp_usd_now = await get_xrp_usd()
+    # Take a price snapshot for the pair (refresh fresh `pair` since update above changed reserves)
+    res_pair = await session.execute(select(AmmPair).where(AmmPair.id == pair.id))
+    fresh_pair = res_pair.scalar_one_or_none()
+    if fresh_pair:
+        try:
+            await take_snapshot(session, fresh_pair, xrp_usd=xrp_usd_now)
+        except Exception as e:
+            log.debug(f'snapshot failed: {e}')
+
     txs = await xrpl_service.get_recent_transactions(pair.lp_address, limit=20)
     seen = _last_seen.setdefault(pair.id, set())
     new_txs = []
@@ -108,40 +120,61 @@ async def poll_amm_pair(pair: AmmPair, session):
         cls = xrpl_service.classify_tx_buy_sell(tx_entry, pair.lp_address)
         if not cls['hash'] or cls['hash'] in seen:
             continue
-        new_txs.append(cls)
+        new_txs.append((cls, tx_entry))
         seen.add(cls['hash'])
-    # Only first time seeing txs -> don't emit to avoid backfill spam
-    if len(seen) == len(new_txs):
-        return  # first poll just recorded them
+    # First-poll baseline: record txs but don't emit alerts (avoid backfill spam)
+    is_baseline = (len(seen) == len(new_txs))
 
-    for c in new_txs:
+    for c, raw in new_txs:
         xrp_amt = c.get('xrp_amount', 0) or 0
-        if xrp_amt < WHALE_THRESHOLDS['crab']:
+        actor_addr = c.get('account')
+        # Classify actor (cached)
+        actor_info = await classify_actor(actor_addr) if actor_addr else {'address': None, 'balance_xrp': None, 'rank': None}
+
+        # Persist transaction (idempotent on tx_hash unique)
+        try:
+            session.add(PairTransaction(
+                amm_pair_id=pair.id,
+                tx_hash=c['hash'],
+                tx_type=c.get('type'),
+                side=c.get('side'),
+                account=actor_addr,
+                counterparty=c.get('destination'),
+                xrp_amount=float(xrp_amt or 0),
+                actor_balance_xrp=actor_info.get('balance_xrp'),
+                actor_rank=actor_info.get('rank'),
+                ledger_index=(raw.get('tx', {}) or raw.get('tx_json', {}) or {}).get('ledger_index'),
+                raw_json=json.dumps(raw)[:8000] if raw else None,
+                detected_at=datetime.now(timezone.utc),
+            ))
+            await session.flush()
+        except IntegrityError:
+            await session.rollback()
+        except Exception as e:
+            log.debug(f'failed to persist tx {c.get("hash")}: {e}')
+
+        if is_baseline:
             continue
-        if c['side'] == 'buy' and xrp_amt >= WHALE_THRESHOLDS['humpback']:
-            await _emit_event(
-                session, user_id=pair.user_id, amm_pair_id=pair.id,
-                type_='humpback_buy', severity='critical',
-                title='Humpback Buy Alert',
-                message=f"{xrp_amt:,.0f} XRP purchased!",
-                tx_hash=c['hash'], payload={'xrp': xrp_amt, 'account': c['account']},
-            )
-        elif c['side'] == 'buy' and xrp_amt >= WHALE_THRESHOLDS['shark']:
-            await _emit_event(
-                session, user_id=pair.user_id, amm_pair_id=pair.id,
-                type_='shark_buy', severity='warning',
-                title='Shark Buy Alert',
-                message=f"{xrp_amt:,.0f} XRP buy detected",
-                tx_hash=c['hash'], payload={'xrp': xrp_amt, 'account': c['account']},
-            )
-        elif c['side'] == 'sell' and xrp_amt >= WHALE_THRESHOLDS['shark']:
-            await _emit_event(
-                session, user_id=pair.user_id, amm_pair_id=pair.id,
-                type_='shark_sell', severity='critical',
-                title='Shark Sell Pressure',
-                message=f"Large sell action detected — {xrp_amt:,.0f} XRP",
-                tx_hash=c['hash'], payload={'xrp': xrp_amt, 'account': c['account']},
-            )
+        # Generate alert event if threshold crossed
+        sev = whale_severity(c.get('side'), xrp_amt)
+        if not sev:
+            continue
+        await _emit_event(
+            session,
+            user_id=pair.user_id,
+            amm_pair_id=pair.id,
+            type_=sev['type'],
+            severity=sev['severity'],
+            title=sev['title'],
+            message=sev['message_fmt'].format(amt=xrp_amt),
+            tx_hash=c['hash'],
+            payload={
+                'xrp': xrp_amt,
+                'account': actor_addr,
+                'actor_rank': actor_info.get('rank'),
+                'actor_balance_xrp': actor_info.get('balance_xrp'),
+            },
+        )
 
 
 async def evaluate_price_alerts(session):
@@ -190,11 +223,23 @@ async def _poll_once():
             await session.rollback()
 
 
+_prune_counter = {'n': 0}
+
+
 async def worker_loop(interval_seconds: int = 30):
     log.info(f'Worker started (interval {interval_seconds}s)')
     while True:
         try:
             await _poll_once()
+            # Prune old snapshots once per ~hour (every 120 polls @ 30s)
+            _prune_counter['n'] += 1
+            if _prune_counter['n'] % 120 == 0:
+                async with db_context() as session:
+                    try:
+                        await prune_old_snapshots(session)
+                        await session.commit()
+                    except Exception as e:
+                        log.debug(f'prune failed: {e}')
         except Exception as e:
             log.exception(f'worker loop err: {e}')
         await asyncio.sleep(interval_seconds)

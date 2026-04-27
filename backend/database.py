@@ -7,7 +7,12 @@ from config import settings
 
 Base = declarative_base()
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True, pool_size=10, max_overflow=20)
+# SQLite doesn't support pool_size/max_overflow; PostgreSQL does.
+_engine_kwargs = {'echo': False, 'pool_pre_ping': True}
+if not settings.DATABASE_URL.startswith('sqlite'):
+    _engine_kwargs.update({'pool_size': 10, 'max_overflow': 20})
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
@@ -33,6 +38,7 @@ async def init_db():
     from models import (  # noqa: F401
         User, Subscription, PaymentIntent, AmmPair, Alert, AlertEvent,
         HolderRankConfig, XamanSession, OneSignalDevice,
+        SupportAction, LiquidityExecution, PriceSnapshot, PairTransaction,
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

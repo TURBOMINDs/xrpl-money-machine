@@ -15,12 +15,17 @@ from models import AlertEvent, SupportAction
 from routers.alerts_router import router as alerts_router
 from routers.amm_router import router as amm_router
 from routers.auth_router import router as auth_router
+from routers.liquidity_router import router as liquidity_router
 from routers.notifications_router import router as notifications_router
 from routers.ranks_router import router as ranks_router
 from routers.stats_router import router as stats_router
 from routers.subscription_router import router as subscription_router
+from services.liquidity_engine import execute_cycle
 from services.price_service import get_xrp_usd
 from services.worker import worker_loop
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 logging.basicConfig(
     level=logging.INFO,
@@ -77,6 +82,28 @@ async def lifespan(app: FastAPI):
             log.info('Seeded initial support action.')
     # start background worker
     task = asyncio.create_task(worker_loop(interval_seconds=30))
+
+    # Schedule the XEMA Liquidity Execution Engine: every Sunday at 20:00 UTC
+    scheduler = AsyncIOScheduler(timezone='UTC')
+
+    async def _scheduled_liquidity():
+        log.info('Scheduled liquidity execution starting (Sunday 20:00 UTC)…')
+        try:
+            result = await execute_cycle()
+            log.info(f"Liquidity execution result: status={result.get('status')} dry_run={result.get('dry_run')} "
+                     f"alloc_xema={result.get('allocated_xema_xrp')} tx={result.get('tx_hash')}")
+        except Exception as e:
+            log.exception(f'scheduled liquidity exec failed: {e}')
+
+    scheduler.add_job(
+        _scheduled_liquidity,
+        CronTrigger(day_of_week='sun', hour=20, minute=0, timezone='UTC'),
+        id='liquidity_sunday_20utc',
+        replace_existing=True,
+    )
+    scheduler.start()
+    log.info('APScheduler started: liquidity cron sun 20:00 UTC')
+
     yield
     log.info('Shutting down…')
     task.cancel()
@@ -84,6 +111,7 @@ async def lifespan(app: FastAPI):
         await task
     except asyncio.CancelledError:
         pass
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(title='XRPL Universal Money Machine', version='1.0.0', lifespan=lifespan)
@@ -130,5 +158,6 @@ api.include_router(alerts_router)
 api.include_router(ranks_router)
 api.include_router(notifications_router)
 api.include_router(stats_router)
+api.include_router(liquidity_router)
 
 app.include_router(api)

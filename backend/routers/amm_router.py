@@ -155,46 +155,19 @@ async def pair_chart(
     user: User = Depends(current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return OHLCV candlestick data.
+    """Return OHLCV candlestick data, computed from real price snapshots when available.
 
-    NOTE: XRPL doesn't natively expose historical OHLCV for AMM pairs from the public node;
-    in production you'd derive this from a time-series DB populated by the worker.
-    For V1 we return a deterministically generated series based on current price so the chart
-    renders meaningfully. Clearly labeled as `synthetic: true` in response."""
-    import math, random
+    The OHLC engine collects snapshots every ~30s for tracked AMM pairs. Once enough
+    history exists for the requested interval/range, this endpoint returns true OHLCV
+    aggregated from those snapshots. While the snapshot store is sparse, it falls back
+    to a deterministic synthetic series seeded from the current pool state — the response
+    is clearly labeled with `synthetic: true` in that case.
+    """
     res = await db.execute(
         select(AmmPair).where(AmmPair.id == pair_id, AmmPair.user_id == user.id)
     )
     p = res.scalar_one_or_none()
     if not p:
         raise HTTPException(404, detail='not found')
-    xrp_usd = await get_xrp_usd()
-    base = 0.0
-    if p.reserve_asset1 and p.reserve_asset2 and p.reserve_asset2 > 0:
-        base = (p.reserve_asset1 / p.reserve_asset2) * xrp_usd
-    if not base or base <= 0:
-        base = xrp_usd
-    # Synthetic 30 candles with seeded jitter based on pair_id (deterministic per pair)
-    random.seed(abs(hash(pair_id)) % (2 ** 32))
-    points = []
-    now = datetime.now(timezone.utc)
-    price = base
-    for i in range(60):
-        t = now - timedelta(hours=(60 - i))
-        drift = math.sin(i / 6.0) * 0.01 * price
-        noise = (random.random() - 0.5) * 0.015 * price
-        open_p = price
-        close_p = max(0.0000001, price + drift + noise)
-        high_p = max(open_p, close_p) * (1 + random.random() * 0.006)
-        low_p = min(open_p, close_p) * (1 - random.random() * 0.006)
-        vol = max(100.0, 5000 + random.random() * 15000)
-        points.append({
-            't': int(t.timestamp() * 1000),
-            'o': round(open_p, 8),
-            'h': round(high_p, 8),
-            'l': round(low_p, 8),
-            'c': round(close_p, 8),
-            'v': round(vol, 2),
-        })
-        price = close_p
-    return {'pair_id': pair_id, 'interval': interval, 'range': range_, 'points': points, 'synthetic': True}
+    from services.ohlc_engine import aggregate_candles
+    return await aggregate_candles(db, p, interval=interval, range_label=range_, use_usd=True)
